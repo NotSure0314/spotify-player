@@ -9,6 +9,53 @@ export interface SpotifyUserProfile {
 }
 
 const STORAGE_KEY_USER = 'spotify_synced_user_profile';
+const STORAGE_KEY_IMPORTED_PLAYLISTS = 'spotify_imported_playlists';
+const STORAGE_KEY_LIKED_TRACKS = 'spotify_liked_tracks';
+
+export function getSavedImportedPlaylists(): Playlist[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_IMPORTED_PLAYLISTS);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveImportedPlaylists(playlists: Playlist[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY_IMPORTED_PLAYLISTS, JSON.stringify(playlists));
+  } catch (err) {
+    console.error('Failed to save imported playlists:', err);
+  }
+}
+
+export function addImportedPlaylist(playlist: Playlist) {
+  try {
+    const existing = getSavedImportedPlaylists();
+    const filtered = existing.filter(p => p.id !== playlist.id && p.playlistId !== playlist.playlistId);
+    const updated = [playlist, ...filtered];
+    saveImportedPlaylists(updated);
+  } catch (err) {
+    console.error('Failed to add imported playlist:', err);
+  }
+}
+
+export function getSavedLikedTrackIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_LIKED_TRACKS);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function saveLikedTrackIds(ids: Set<string>) {
+  try {
+    localStorage.setItem(STORAGE_KEY_LIKED_TRACKS, JSON.stringify(Array.from(ids)));
+  } catch (err) {
+    console.error('Failed to save liked track IDs:', err);
+  }
+}
 
 export function getSavedUserProfile(): SpotifyUserProfile | null {
   try {

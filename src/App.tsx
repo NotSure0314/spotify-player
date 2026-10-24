@@ -13,11 +13,15 @@ import {
   searchSpotifyCatalog,
   importSpotifyPlaylist,
   getSavedUserProfile,
+  getSavedImportedPlaylists,
+  addImportedPlaylist,
+  getSavedLikedTrackIds,
+  saveLikedTrackIds,
   SpotifyUserProfile
 } from './spotifyApi';
 
 export function App() {
-  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>(() => getSavedImportedPlaylists());
   const [currentView, setCurrentView] = useState<string>('home');
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -35,7 +39,7 @@ export function App() {
   const [volume, setVolume] = useState<number>(0.75);
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('all');
-  const [likedTrackIds, setLikedTrackIds] = useState<Set<string>>(new Set());
+  const [likedTrackIds, setLikedTrackIds] = useState<Set<string>>(() => getSavedLikedTrackIds());
 
   // Auxiliary panels
   const [isLyricsOpen, setIsLyricsOpen] = useState<boolean>(false);
@@ -67,31 +71,50 @@ export function App() {
     audioEngine.setVolume(volume);
   }, []);
 
-  // 2. Initial Load: Sync User Playlists
+  // Sync liked tracks to storage
+  useEffect(() => {
+    saveLikedTrackIds(likedTrackIds);
+  }, [likedTrackIds]);
+
+  // 2. Initial Load: Sync User Playlists & Merge with Persisted Imported Playlists
   useEffect(() => {
     async function initUser() {
       const saved = getSavedUserProfile();
       const targetUser = saved?.id || 'gqfy40kjxlg18x0ygxux5ramv';
+      const savedImported = getSavedImportedPlaylists();
+
       try {
         const result = await fetchUserProfile(targetUser);
         if (result && result.playlists.length > 0) {
           setUserProfile(result.user);
           // Fetch full track list with real album covers for the first playlist
           const firstDetails = await fetchLivePlaylistDetails(result.playlists[0].id);
-          const fullPlaylists = result.playlists.map((p, idx) =>
+          const userPlaylists = result.playlists.map((p, idx) =>
             idx === 0 && firstDetails
               ? { ...p, tracks: firstDetails.tracks, coverUrl: firstDetails.coverUrl || p.coverUrl }
               : p
           );
 
-          setPlaylists(fullPlaylists);
-          setSelectedPlaylistId(fullPlaylists[0].id);
-          if (firstDetails?.tracks?.length) {
+          // Merge imported playlists (persisted across reloads) with user profile playlists
+          const importedIds = new Set(savedImported.map(p => p.id));
+          const deduplicatedUser = userPlaylists.filter(p => !importedIds.has(p.id));
+          const allPlaylists = [...savedImported, ...deduplicatedUser];
+
+          setPlaylists(allPlaylists);
+          setSelectedPlaylistId(prev => prev || allPlaylists[0]?.id || null);
+          if (firstDetails?.tracks?.length && !currentTrack) {
             setCurrentTrack(firstDetails.tracks[0]);
           }
+        } else if (savedImported.length > 0) {
+          setPlaylists(savedImported);
+          setSelectedPlaylistId(prev => prev || savedImported[0]?.id || null);
         }
       } catch (err) {
         console.warn('Initial sync fallback:', err);
+        if (savedImported.length > 0) {
+          setPlaylists(savedImported);
+          setSelectedPlaylistId(prev => prev || savedImported[0]?.id || null);
+        }
       }
     }
     initUser();
@@ -149,10 +172,11 @@ export function App() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Handle selecting or playing a searched playlist
+  // Handle selecting or playing a searched playlist (Persisted across reloads)
   const handleSelectSearchPlaylist = async (playlist: Playlist, autoPlay: boolean = false) => {
     let target = playlists.find(p => p.id === playlist.id);
     if (!target) {
+      addImportedPlaylist(playlist);
       setPlaylists(prev => [playlist, ...prev]);
       target = playlist;
     }
@@ -163,17 +187,17 @@ export function App() {
     if (!target.tracks || target.tracks.length === 0) {
       const details = await fetchLivePlaylistDetails(playlist.id);
       if (details && details.tracks.length > 0) {
+        const fullPlaylist = {
+          ...target,
+          tracks: details.tracks,
+          coverUrl: details.coverUrl || target.coverUrl,
+          description: details.description || target.description,
+          gradient: details.gradient || target.gradient
+        };
+        addImportedPlaylist(fullPlaylist);
         setPlaylists(prev =>
           prev.map(p =>
-            p.id === playlist.id
-              ? {
-                  ...p,
-                  tracks: details.tracks,
-                  coverUrl: details.coverUrl || p.coverUrl,
-                  description: details.description || p.description,
-                  gradient: details.gradient || p.gradient
-                }
-              : p
+            p.id === playlist.id ? fullPlaylist : p
           )
         );
         if (autoPlay) {
@@ -344,12 +368,16 @@ export function App() {
     });
   };
 
-  // Import Playlist Handler
+  // Import Playlist Handler (Persisted to localStorage across reloads)
   const handleImportPlaylist = async (url: string): Promise<boolean> => {
     const imported = await importSpotifyPlaylist(url);
     if (!imported) return false;
 
-    setPlaylists(prev => [imported, ...prev]);
+    addImportedPlaylist(imported);
+    setPlaylists(prev => {
+      const filtered = prev.filter(p => p.id !== imported.id && p.playlistId !== imported.playlistId);
+      return [imported, ...filtered];
+    });
     setSelectedPlaylistId(imported.id);
     setCurrentView('playlist');
     return true;
