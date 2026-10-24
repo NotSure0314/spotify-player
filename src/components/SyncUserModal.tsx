@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Sparkles, User, AlertCircle, ArrowRight, Music } from 'lucide-react';
+import { X, Sparkles, User, AlertCircle, ArrowRight } from 'lucide-react';
+import { SpotifyLogo } from './SpotifyLogo';
 
 interface SyncUserModalProps {
   isOpen: boolean;
@@ -105,7 +106,7 @@ export const SyncUserModal: React.FC<SyncUserModalProps> = ({
             color: '#000000',
             flexShrink: 0
           }}>
-            <Music size={22} strokeWidth={2.6} />
+            <SpotifyLogo size={26} color="#000000" />
           </div>
           <div>
             <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', margin: 0 }}>

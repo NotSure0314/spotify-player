@@ -1,6 +1,7 @@
 import React from 'react';
-import { Home, Search, Bell, Users, Music2, FolderHeart, RefreshCw, Sparkles } from 'lucide-react';
+import { Home, Search, Bell, Users, FolderHeart, RefreshCw, Sparkles } from 'lucide-react';
 import { SpotifyUserProfile } from '../spotifyApi';
+import { SpotifyLogo } from './SpotifyLogo';
 
 interface TopBarProps {
   currentView: string;
@@ -33,25 +34,18 @@ export const TopBar: React.FC<TopBarProps> = ({
       {/* Left: Spotify Logo */}
       <div
         onClick={() => onSelectView('home')}
+        title="Spotify"
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          padding: '4px',
+          transition: 'transform 0.15s ease'
         }}
+        onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.06)')}
+        onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
       >
-        <div style={{
-          width: '36px',
-          height: '36px',
-          borderRadius: '50%',
-          backgroundColor: '#ffffff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#000000'
-        }}>
-          <Music2 size={20} strokeWidth={2.8} />
-        </div>
+        <SpotifyLogo size={32} color="#ffffff" />
       </div>
 
       {/* Center: Spotify Home + Pill Search Bar */}
