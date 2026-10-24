@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Track } from '../types';
 import { getArtistProfile } from '../utils/artistData';
+import { getTrackLyrics } from '../utils/lyricsData';
 
 interface RightPanelProps {
   currentTrack: Track | null;
@@ -53,13 +54,15 @@ export const RightPanel: React.FC<RightPanelProps> = ({
 
   const nextTrack = queue && queue.length > 0 ? queue[0] : null;
 
-  // Determine active lyrics line preview
-  const defaultLyric1 = currentTrack?.lyrics && currentTrack.lyrics.length > 0
-    ? currentTrack.lyrics[Math.min(1, currentTrack.lyrics.length - 1)]
-    : 'I just wanna get high with my lover';
-  const defaultLyric2 = currentTrack?.lyrics && currentTrack.lyrics.length > 1
-    ? currentTrack.lyrics[Math.min(2, currentTrack.lyrics.length - 1)]
-    : 'Veo una muñeca cuando miro en el espejo';
+  // Dynamically compute synced lyrics for this track based on current playback progress
+  const trackLyrics = getTrackLyrics(currentTrack);
+  const totalDuration = currentTrack?.duration || 180;
+  const activeLineIndex = trackLyrics.length > 0
+    ? Math.min(trackLyrics.length - 1, Math.max(0, Math.floor((progress / totalDuration) * trackLyrics.length)))
+    : 0;
+
+  const currentLyricLine = trackLyrics[activeLineIndex] || '...';
+  const nextLyricLine = trackLyrics[activeLineIndex + 1] || trackLyrics[activeLineIndex];
 
   return (
     <aside
@@ -191,19 +194,27 @@ export const RightPanel: React.FC<RightPanelProps> = ({
           <>
             {currentTrack ? (
               <>
-                {/* Large Canvas Artwork */}
+                {/* Large Canvas Artwork (Zoomed Album Cover matching original Spotify dimensions) */}
                 <div style={{
                   position: 'relative',
                   width: '100%',
-                  aspectRatio: '1 / 1',
+                  aspectRatio: '9 / 14',
+                  minHeight: '460px',
+                  maxHeight: '520px',
                   borderRadius: '8px',
                   overflow: 'hidden',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                  backgroundColor: '#181818'
                 }}>
                   <img
                     src={currentTrack.coverUrl}
                     alt={currentTrack.title}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      transform: 'scale(1.06)'
+                    }}
                   />
                   {/* Switch to video badge button */}
                   <button
@@ -302,7 +313,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   </div>
                 </div>
 
-                {/* Lyrics Preview Card */}
+                {/* Lyrics Preview Card (Dynamic synced lyrics with Expand button) */}
                 <div
                   onClick={() => onSelectTab('lyrics')}
                   style={{
@@ -315,29 +326,62 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                     gap: '8px',
                     transition: 'transform 0.15s ease, filter 0.15s ease'
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
+                  onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.12)')}
                   onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
                 >
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
-                    Lyrics preview
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
+                      Lyrics preview
+                    </span>
+                    <span
+                      onClick={e => {
+                        e.stopPropagation();
+                        onSelectTab('lyrics');
+                      }}
+                      style={{
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        color: 'rgba(255, 255, 255, 0.75)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                        borderRadius: '500px',
+                        padding: '3px 10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        cursor: 'pointer',
+                        transition: 'color 0.15s ease, background-color 0.15s ease'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.color = '#ffffff';
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)';
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.12)';
+                      }}
+                    >
+                      Expand ↗
+                    </span>
+                  </div>
                   <p style={{
                     fontSize: '18px',
                     fontWeight: 700,
                     color: '#ffffff',
                     lineHeight: 1.35,
-                    margin: '2px 0 0 0'
+                    margin: '2px 0 0 0',
+                    transition: 'color 0.2s ease'
                   }}>
-                    {defaultLyric1}
+                    {currentLyricLine}
                   </p>
                   <p style={{
                     fontSize: '15px',
                     fontWeight: 600,
                     color: 'rgba(255, 255, 255, 0.5)',
                     lineHeight: 1.35,
-                    margin: 0
+                    margin: 0,
+                    transition: 'color 0.2s ease'
                   }}>
-                    {defaultLyric2}
+                    {nextLyricLine}
                   </p>
                 </div>
 
@@ -414,10 +458,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                     borderRadius: '10px',
                     overflow: 'hidden'
                   }}>
-                    {/* Banner Photo */}
+                    {/* Banner Photo (Uses album cover zoomed in) */}
                     <div style={{ position: 'relative', width: '100%', height: '180px' }}>
                       <img
-                        src={artistProfile.image}
+                        src={currentTrack.coverUrl || artistProfile.image}
                         alt={artistProfile.name}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
@@ -713,12 +757,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({
         {/* VIEW B: FULL LYRICS */}
         {activeTab === 'lyrics' && (
           <div>
-            {currentTrack?.lyrics && currentTrack.lyrics.length > 0 ? (
+            {trackLyrics && trackLyrics.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {currentTrack.lyrics.map((line, idx) => {
-                  const activeLineIndex = Math.floor(
-                    (progress / (currentTrack.duration || 1)) * currentTrack.lyrics!.length
-                  );
+                {trackLyrics.map((line, idx) => {
                   const isCurrentLine = idx === activeLineIndex;
 
                   return (
