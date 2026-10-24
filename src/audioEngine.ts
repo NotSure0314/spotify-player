@@ -239,3 +239,6 @@ class AudioPlayerEngine {
 }
 
 export const audioEngine = new AudioPlayerEngine();
+if (typeof window !== 'undefined') {
+  (window as any).__audioEngine = audioEngine;
+}

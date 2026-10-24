@@ -22,7 +22,7 @@ interface MainContentProps {
   playlists: Playlist[];
   currentTrack: Track | null;
   isPlaying: boolean;
-  onPlayTrack: (track: Track) => void;
+  onPlayTrack: (track: Track, contextTracks?: Track[], playlistInfo?: { id: string; title: string }) => void;
   onTogglePlay: () => void;
   likedTrackIds: Set<string>;
   onToggleLikeTrack: (trackId: string) => void;
@@ -108,14 +108,20 @@ export const MainContent: React.FC<MainContentProps> = ({
 
   // Helper renderer for track rows
   const renderTrackRow = (t: Track, idx: number) => {
-    const isCurrent = currentTrack?.id === t.id;
+    const isCurrent = Boolean(
+      currentTrack && (
+        currentTrack.id === t.id ||
+        (currentTrack.title.trim().toLowerCase() === t.title.trim().toLowerCase() &&
+         currentTrack.artist.trim().toLowerCase() === t.artist.trim().toLowerCase())
+      )
+    );
     const isLiked = likedTrackIds.has(t.id);
     const isHovered = hoveredTrackIndex === idx;
 
     return (
       <div
         key={t.id}
-        onClick={() => onPlayTrack(t)}
+        onClick={() => onPlayTrack(t, searchResults, { id: 'search', title: 'Search Results' })}
         onMouseEnter={() => setHoveredTrackIndex(idx)}
         onMouseLeave={() => setHoveredTrackIndex(null)}
         style={{
@@ -130,11 +136,20 @@ export const MainContent: React.FC<MainContentProps> = ({
           height: '56px'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px' }}>
           {isHovered ? (
-            <Play size={16} fill="#ffffff" color="#ffffff" />
+            isCurrent && isPlaying ? (
+              <Pause size={16} fill="#ffffff" color="#ffffff" onClick={(e) => { e.stopPropagation(); onTogglePlay(); }} />
+            ) : (
+              <Play size={16} fill="#ffffff" color="#ffffff" onClick={(e) => { e.stopPropagation(); onPlayTrack(t, searchResults, { id: 'search', title: 'Search Results' }); }} />
+            )
           ) : isCurrent && isPlaying ? (
-            <Play size={16} fill="#1ed760" color="#1ed760" />
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '14px' }}>
+              <span className="spotify-eq-bar spotify-eq-1" />
+              <span className="spotify-eq-bar spotify-eq-2" />
+              <span className="spotify-eq-bar spotify-eq-3" />
+              <span className="spotify-eq-bar spotify-eq-4" />
+            </div>
           ) : (
             <span style={{ fontSize: '14px', color: isCurrent ? '#1ed760' : 'var(--text-subdued)' }}>
               {idx + 1}
@@ -570,10 +585,15 @@ export const MainContent: React.FC<MainContentProps> = ({
             <button
               onClick={() => {
                 if (playlist.tracks.length > 0) {
-                  if (currentTrack && playlist.tracks.some(t => t.id === currentTrack.id)) {
+                  const isMatch = currentTrack && playlist.tracks.some(t =>
+                    t.id === currentTrack.id ||
+                    (t.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase() &&
+                     t.artist.trim().toLowerCase() === currentTrack.artist.trim().toLowerCase())
+                  );
+                  if (isMatch) {
                     onTogglePlay();
                   } else {
-                    onPlayTrack(playlist.tracks[0]);
+                    onPlayTrack(playlist.tracks[0], playlist.tracks, { id: playlist.id, title: playlist.title });
                   }
                 }
               }}
@@ -601,7 +621,11 @@ export const MainContent: React.FC<MainContentProps> = ({
                 e.currentTarget.style.backgroundColor = '#1ed760';
               }}
             >
-              {isPlaying && currentTrack && playlist.tracks.some(t => t.id === currentTrack.id) ? (
+              {isPlaying && currentTrack && playlist.tracks.some(t =>
+                t.id === currentTrack.id ||
+                (t.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase() &&
+                 t.artist.trim().toLowerCase() === currentTrack.artist.trim().toLowerCase())
+              ) ? (
                 <Pause size={20} fill="#000000" color="#000000" />
               ) : (
                 <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
@@ -699,10 +723,15 @@ export const MainContent: React.FC<MainContentProps> = ({
           <button
             onClick={() => {
               if (playlist.tracks.length > 0) {
-                if (currentTrack && playlist.tracks.some(t => t.id === currentTrack.id)) {
+                const isMatch = currentTrack && playlist.tracks.some(t =>
+                  t.id === currentTrack.id ||
+                  (t.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase() &&
+                   t.artist.trim().toLowerCase() === currentTrack.artist.trim().toLowerCase())
+                );
+                if (isMatch) {
                   onTogglePlay();
                 } else {
-                  onPlayTrack(playlist.tracks[0]);
+                  onPlayTrack(playlist.tracks[0], playlist.tracks, { id: playlist.id, title: playlist.title });
                 }
               }
             }}
@@ -729,7 +758,11 @@ export const MainContent: React.FC<MainContentProps> = ({
               e.currentTarget.style.backgroundColor = '#1ed760';
             }}
           >
-            {isPlaying && currentTrack && playlist.tracks.some(t => t.id === currentTrack.id) ? (
+            {isPlaying && currentTrack && playlist.tracks.some(t =>
+              t.id === currentTrack.id ||
+              (t.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase() &&
+               t.artist.trim().toLowerCase() === currentTrack.artist.trim().toLowerCase())
+            ) ? (
               <Pause size={24} fill="#000000" color="#000000" />
             ) : (
               <Play size={24} fill="#000000" color="#000000" style={{ marginLeft: '3px' }} />
@@ -813,14 +846,20 @@ export const MainContent: React.FC<MainContentProps> = ({
           {/* Table Rows */}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {playlist.tracks.map((track, index) => {
-              const isCurrent = currentTrack?.id === track.id;
+              const isCurrent = Boolean(
+                currentTrack && (
+                  currentTrack.id === track.id ||
+                  (currentTrack.title.trim().toLowerCase() === track.title.trim().toLowerCase() &&
+                   currentTrack.artist.trim().toLowerCase() === track.artist.trim().toLowerCase())
+                )
+              );
               const isLiked = likedTrackIds.has(track.id);
               const isHovered = hoveredTrackIndex === index;
 
               return (
                 <div
                   key={track.id}
-                  onClick={() => onPlayTrack(track)}
+                  onClick={() => onPlayTrack(track, playlist.tracks, { id: playlist.id, title: playlist.title })}
                   onMouseEnter={() => setHoveredTrackIndex(index)}
                   onMouseLeave={() => setHoveredTrackIndex(null)}
                   style={{
@@ -836,11 +875,20 @@ export const MainContent: React.FC<MainContentProps> = ({
                   }}
                 >
                   {/* # or Play Icon */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px' }}>
                     {isHovered ? (
-                      <Play size={16} fill="#ffffff" color="#ffffff" />
+                      isCurrent && isPlaying ? (
+                        <Pause size={16} fill="#ffffff" color="#ffffff" onClick={(e) => { e.stopPropagation(); onTogglePlay(); }} />
+                      ) : (
+                        <Play size={16} fill="#ffffff" color="#ffffff" onClick={(e) => { e.stopPropagation(); onPlayTrack(track, playlist.tracks, { id: playlist.id, title: playlist.title }); }} />
+                      )
                     ) : isCurrent && isPlaying ? (
-                      <Play size={16} fill="#1ed760" color="#1ed760" />
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '14px' }}>
+                        <span className="spotify-eq-bar spotify-eq-1" />
+                        <span className="spotify-eq-bar spotify-eq-2" />
+                        <span className="spotify-eq-bar spotify-eq-3" />
+                        <span className="spotify-eq-bar spotify-eq-4" />
+                      </div>
                     ) : (
                       <span style={{ fontSize: '14px', color: isCurrent ? '#1ed760' : 'var(--text-subdued)' }}>
                         {index + 1}
@@ -942,7 +990,7 @@ export const MainContent: React.FC<MainContentProps> = ({
 
     if (matched) {
       if (autoPlay && matched.tracks.length > 0) {
-        onPlayTrack(matched.tracks[0]);
+        onPlayTrack(matched.tracks[0], matched.tracks, { id: matched.id, title: matched.title });
       }
       onSelectPlaylist(matched.id);
       return;
@@ -956,7 +1004,7 @@ export const MainContent: React.FC<MainContentProps> = ({
         title: item.title,
         artist: item.artistName || item.subtitle.split(',')[0] || randomTrack.artist,
         coverUrl: item.image || randomTrack.coverUrl
-      });
+      }, allTracks, { id: 'home', title: item.title });
     } else {
       onPlayTrack({
         id: `home-${item.id}`,
