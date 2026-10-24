@@ -2,6 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Play, Pause, Heart, Clock, MoreHorizontal, ArrowDownCircle } from 'lucide-react';
 import { Playlist, Track } from '../types';
 import { extractDominantColor, getFallbackPlaylistColor } from '../utils/colorExtractor';
+import { SpotifyUserProfile } from '../spotifyApi';
+import {
+  HomeCardItem,
+  QUICK_ACCESS_ITEMS,
+  MADE_FOR_YOU_ITEMS,
+  JUMP_BACK_IN_ITEMS,
+  RECENTS_ITEMS,
+  RECOMMENDED_STATIONS,
+  TOP_MIXES,
+  RECOMMENDED_FOR_TODAY,
+  FEATURED_RADIO_CARDS
+} from '../utils/homeData';
 
 interface MainContentProps {
   currentView: string;
@@ -21,6 +33,7 @@ interface MainContentProps {
   onSelectSearchCategory?: (category: string) => void;
   isSearching: boolean;
   allTracks: Track[];
+  userProfile?: SpotifyUserProfile | null;
 }
 
 const formatDuration = (seconds: number) => {
@@ -46,9 +59,10 @@ export const MainContent: React.FC<MainContentProps> = ({
   onSelectSearchPlaylist,
   onSelectSearchCategory,
   isSearching,
-  allTracks
+  allTracks,
+  userProfile
 }) => {
-  const [activeChip, setActiveChip] = useState<'all' | 'music' | 'podcasts'>('all');
+  const [activeChip, setActiveChip] = useState<'all' | 'music' | 'podcasts' | 'audiobooks'>('all');
   const [searchFilter, setSearchFilter] = useState<'all' | 'tracks' | 'playlists'>('all');
   const [hoveredTrackIndex, setHoveredTrackIndex] = useState<number | null>(null);
   const [extractedHeaderColor, setExtractedHeaderColor] = useState<string>('#77010b');
@@ -91,13 +105,6 @@ export const MainContent: React.FC<MainContentProps> = ({
       });
     }
   }, [selectedPlaylist?.id, selectedPlaylist?.coverUrl]);
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
-  };
 
   // Helper renderer for track rows
   const renderTrackRow = (t: Track, idx: number) => {
@@ -924,18 +931,98 @@ export const MainContent: React.FC<MainContentProps> = ({
   }
 
   // 3. HOME VIEW (DEFAULT)
+  const displayName = userProfile?.name || userProfile?.id || 'Shreeji';
+
+  const handleHomeCardClick = (item: HomeCardItem, autoPlay = true) => {
+    // 1. If matches existing playlist by title or id:
+    const matched = playlists.find(p =>
+      p.title.toLowerCase().trim() === item.title.toLowerCase().trim() ||
+      p.id.toLowerCase().trim() === item.id.toLowerCase().trim()
+    );
+
+    if (matched) {
+      if (autoPlay && matched.tracks.length > 0) {
+        onPlayTrack(matched.tracks[0]);
+      }
+      onSelectPlaylist(matched.id);
+      return;
+    }
+
+    // 2. Otherwise pick random track from user's library or synthesized random track:
+    if (allTracks.length > 0) {
+      const randomTrack = allTracks[Math.floor(Math.random() * allTracks.length)];
+      onPlayTrack({
+        ...randomTrack,
+        title: item.title,
+        artist: item.artistName || item.subtitle.split(',')[0] || randomTrack.artist,
+        coverUrl: item.image || randomTrack.coverUrl
+      });
+    } else {
+      onPlayTrack({
+        id: `home-${item.id}`,
+        title: item.title,
+        artist: item.artistName || item.subtitle.split(',')[0] || 'Featured Artist',
+        album: item.title,
+        duration: 180,
+        coverUrl: item.image,
+        gradient: item.badgeColor || '#1ed760'
+      });
+    }
+  };
+
+  const renderSectionHeader = (title: string, subtitle?: string) => (
+    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {subtitle && (
+          <span style={{
+            fontSize: '11px',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            color: 'var(--text-subdued)',
+            marginBottom: '2px'
+          }}>
+            {subtitle}
+          </span>
+        )}
+        <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.5px' }}>
+          {title}
+        </h2>
+      </div>
+      <button
+        style={{
+          background: 'none',
+          border: 'none',
+          color: 'var(--text-subdued)',
+          fontSize: '14px',
+          fontWeight: 700,
+          cursor: 'pointer',
+          padding: '4px 0'
+        }}
+        onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
+        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
+      >
+        Show all
+      </button>
+    </div>
+  );
+
   return (
-    <div style={{ padding: '16px 32px 32px 32px' }} className="animate-fade-in">
-      {/* Filter Chips Bar */}
+    <div style={{
+      background: 'linear-gradient(180deg, #4c1117 0%, rgba(18, 18, 18, 0.95) 280px, #121212 100%)',
+      minHeight: '100%',
+      padding: '24px 32px 64px 32px'
+    }} className="animate-fade-in">
+      {/* Filter Chips Bar (All, Music, Podcasts, Audiobooks) */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-        {(['all', 'music', 'podcasts'] as const).map(chip => {
+        {(['all', 'music', 'podcasts', 'audiobooks'] as const).map(chip => {
           const isActive = activeChip === chip;
           return (
             <button
               key={chip}
               onClick={() => setActiveChip(chip)}
               style={{
-                padding: '6px 14px',
+                padding: '7px 16px',
                 borderRadius: '500px',
                 border: 'none',
                 fontSize: '14px',
@@ -953,105 +1040,113 @@ export const MainContent: React.FC<MainContentProps> = ({
         })}
       </div>
 
-      {/* Greeting */}
-      <h1 style={{ fontSize: '32px', fontWeight: 800, marginBottom: '16px', letterSpacing: '-0.5px' }}>
-        {getGreeting()}
-      </h1>
-
-      {/* 2x3 Quick Play Grid */}
+      {/* 2x4 Quick Access Grid (8 items) */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+        gridTemplateColumns: 'repeat(4, 1fr)',
         gap: '12px',
-        marginBottom: '36px'
+        marginBottom: '40px'
       }}>
-        {playlists.map(pl => (
-          <div
-            key={pl.id}
-            onClick={() => onSelectPlaylist(pl.id)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              borderRadius: '4px',
-              overflow: 'hidden',
-              cursor: 'pointer',
-              position: 'relative',
-              transition: 'background-color 0.2s ease',
-              height: '64px'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.16)';
-              const playBtn = e.currentTarget.querySelector('.floating-play') as HTMLElement;
-              if (playBtn) {
-                playBtn.style.opacity = '1';
-                playBtn.style.transform = 'scale(1)';
-              }
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
-              const playBtn = e.currentTarget.querySelector('.floating-play') as HTMLElement;
-              if (playBtn) {
-                playBtn.style.opacity = '0';
-                playBtn.style.transform = 'scale(0.9)';
-              }
-            }}
-          >
-            <img src={pl.coverUrl} alt={pl.title} style={{ width: '64px', height: '64px', objectFit: 'cover' }} />
-            <span style={{
-              fontSize: '14px',
-              fontWeight: 700,
-              padding: '0 16px',
-              flex: 1,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
-            }}>
-              {pl.title}
-            </span>
+        {QUICK_ACCESS_ITEMS.map((item, index) => {
+          // If there is an existing loaded playlist matching title, link to it
+          const matched = playlists.find(p => p.title.toLowerCase().trim() === item.title.toLowerCase().trim());
+          const displayImage = matched?.coverUrl || item.image;
+          const displayTitle = matched?.title || item.title;
 
-            {/* Hover Floating Play Button */}
+          return (
             <div
-              className="floating-play"
-              onClick={e => {
-                e.stopPropagation();
-                if (pl.tracks.length > 0) onPlayTrack(pl.tracks[0]);
-              }}
+              key={item.id || index}
+              onClick={() => handleHomeCardClick({ ...item, title: displayTitle, image: displayImage }, false)}
               style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '50%',
-                backgroundColor: '#1ed760',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
-                marginRight: '12px',
-                opacity: 0,
-                transform: 'scale(0.9)',
-                transition: 'opacity 0.2s ease, transform 0.15s ease'
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                borderRadius: '4px',
+                overflow: 'hidden',
+                cursor: 'pointer',
+                position: 'relative',
+                transition: 'background-color 0.2s ease',
+                height: '64px'
               }}
-              onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
-              onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.16)';
+                const playBtn = e.currentTarget.querySelector('.quick-play-btn') as HTMLElement;
+                if (playBtn) {
+                  playBtn.style.opacity = '1';
+                  playBtn.style.transform = 'scale(1)';
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                const playBtn = e.currentTarget.querySelector('.quick-play-btn') as HTMLElement;
+                if (playBtn) {
+                  playBtn.style.opacity = '0';
+                  playBtn.style.transform = 'scale(0.9)';
+                }
+              }}
             >
-              <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+              <img
+                src={displayImage}
+                alt={displayTitle}
+                style={{ width: '64px', height: '64px', objectFit: 'cover', flexShrink: 0 }}
+              />
+              <span style={{
+                fontSize: '14px',
+                fontWeight: 700,
+                padding: '0 16px',
+                flex: 1,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                color: '#ffffff'
+              }}>
+                {displayTitle}
+              </span>
+
+              {/* Hover Floating Play Button */}
+              <div
+                className="quick-play-btn"
+                onClick={e => {
+                  e.stopPropagation();
+                  handleHomeCardClick({ ...item, title: displayTitle, image: displayImage }, true);
+                }}
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '50%',
+                  backgroundColor: '#1ed760',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
+                  marginRight: '12px',
+                  opacity: 0,
+                  transform: 'scale(0.9)',
+                  transition: 'opacity 0.2s ease, transform 0.15s ease',
+                  flexShrink: 0
+                }}
+                onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
+                onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+              >
+                <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Made For You Carousel Grid */}
-      <div style={{ marginBottom: '32px' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '16px' }}>Made For You</h2>
+      {/* SECTION 1: Made For Shreeji (Daily Mixes & Radar) */}
+      <div style={{ marginBottom: '40px' }}>
+        {renderSectionHeader(displayName, 'Made For')}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-          gap: '24px'
+          gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+          gap: '18px'
         }}>
-          {playlists.map(pl => (
+          {MADE_FOR_YOU_ITEMS.map(item => (
             <div
-              key={pl.id}
-              onClick={() => onSelectPlaylist(pl.id)}
+              key={item.id}
+              onClick={() => handleHomeCardClick(item)}
               style={{
                 backgroundColor: '#181818',
                 padding: '16px',
@@ -1062,7 +1157,7 @@ export const MainContent: React.FC<MainContentProps> = ({
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.backgroundColor = '#282828';
-                const playBtn = e.currentTarget.querySelector('.card-play') as HTMLElement;
+                const playBtn = e.currentTarget.querySelector('.mix-play-btn') as HTMLElement;
                 if (playBtn) {
                   playBtn.style.opacity = '1';
                   playBtn.style.transform = 'translateY(0)';
@@ -1070,53 +1165,96 @@ export const MainContent: React.FC<MainContentProps> = ({
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.backgroundColor = '#181818';
-                const playBtn = e.currentTarget.querySelector('.card-play') as HTMLElement;
+                const playBtn = e.currentTarget.querySelector('.mix-play-btn') as HTMLElement;
                 if (playBtn) {
                   playBtn.style.opacity = '0';
                   playBtn.style.transform = 'translateY(8px)';
                 }
               }}
             >
-              <div style={{ position: 'relative', width: '100%', paddingBottom: '100%', marginBottom: '12px' }}>
+              <div style={{
+                position: 'relative',
+                width: '100%',
+                paddingBottom: '100%',
+                marginBottom: '12px',
+                borderRadius: '6px',
+                overflow: 'hidden',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+              }}>
                 <img
-                  src={pl.coverUrl}
-                  alt={pl.title}
+                  src={item.image}
+                  alt={item.title}
                   style={{
                     position: 'absolute',
                     top: 0,
                     left: 0,
                     width: '100%',
                     height: '100%',
-                    borderRadius: '6px',
                     objectFit: 'cover'
                   }}
                 />
-                <div
-                  className="card-play"
-                  onClick={e => {
-                    e.stopPropagation();
-                    if (pl.tracks.length > 0) onPlayTrack(pl.tracks[0]);
-                  }}
-                  style={{
+
+                {/* Daily Mix Badge */}
+                {item.badgeNumber && (
+                  <div style={{
                     position: 'absolute',
                     bottom: '8px',
+                    left: '8px',
+                    backgroundColor: 'rgba(0,0,0,0.85)',
+                    borderRadius: '4px',
+                    padding: '2px 6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#ffffff' }}>Daily Mix</span>
+                    <span style={{
+                      backgroundColor: item.badgeColor || '#00d4ff',
+                      color: '#000000',
+                      borderRadius: '3px',
+                      padding: '1px 4px',
+                      fontSize: '11px',
+                      fontWeight: 900
+                    }}>
+                      {item.badgeNumber}
+                    </span>
+                  </div>
+                )}
+
+                {/* Floating Play Button */}
+                <button
+                  className="mix-play-btn"
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleHomeCardClick(item, true);
+                  }}
+                  title={`Play ${item.title}`}
+                  style={{
+                    position: 'absolute',
                     right: '8px',
-                    width: '48px',
-                    height: '48px',
+                    bottom: '8px',
+                    width: '46px',
+                    height: '46px',
                     borderRadius: '50%',
                     backgroundColor: '#1ed760',
+                    border: 'none',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 8px 16px rgba(0,0,0,0.5)',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
                     opacity: 0,
                     transform: 'translateY(8px)',
-                    transition: 'all 0.2s ease'
+                    transition: 'opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease',
+                    cursor: 'pointer',
+                    zIndex: 2
                   }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
                 >
                   <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
-                </div>
+                </button>
               </div>
+
               <h3 style={{
                 fontSize: '15px',
                 fontWeight: 700,
@@ -1126,7 +1264,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                 overflow: 'hidden',
                 textOverflow: 'ellipsis'
               }}>
-                {pl.title}
+                {item.title}
               </h3>
               <p style={{
                 fontSize: '12px',
@@ -1135,10 +1273,843 @@ export const MainContent: React.FC<MainContentProps> = ({
                 display: '-webkit-box',
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                margin: 0
               }}>
-                By Spotify
+                {item.subtitle}
               </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* SECTION 2: Jump back in */}
+      <div style={{ marginBottom: '40px' }}>
+        {renderSectionHeader('Jump back in')}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+          gap: '18px'
+        }}>
+          {JUMP_BACK_IN_ITEMS.map(item => (
+            <div
+              key={item.id}
+              onClick={() => handleHomeCardClick(item)}
+              style={{
+                backgroundColor: '#181818',
+                padding: '16px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease',
+                position: 'relative'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = '#282828';
+                const playBtn = e.currentTarget.querySelector('.jump-play-btn') as HTMLElement;
+                if (playBtn) {
+                  playBtn.style.opacity = '1';
+                  playBtn.style.transform = 'translateY(0)';
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = '#181818';
+                const playBtn = e.currentTarget.querySelector('.jump-play-btn') as HTMLElement;
+                if (playBtn) {
+                  playBtn.style.opacity = '0';
+                  playBtn.style.transform = 'translateY(8px)';
+                }
+              }}
+            >
+              <div style={{
+                position: 'relative',
+                width: '100%',
+                paddingBottom: '100%',
+                marginBottom: '12px',
+                borderRadius: '6px',
+                overflow: 'hidden',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+              }}>
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+
+                {/* Floating Play Button */}
+                <button
+                  className="jump-play-btn"
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleHomeCardClick(item, true);
+                  }}
+                  title={`Play ${item.title}`}
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    bottom: '8px',
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '50%',
+                    backgroundColor: '#1ed760',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
+                    opacity: 0,
+                    transform: 'translateY(8px)',
+                    transition: 'opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
+                >
+                  <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                </button>
+              </div>
+
+              <h3 style={{
+                fontSize: '15px',
+                fontWeight: 700,
+                color: '#ffffff',
+                marginBottom: '4px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {item.title}
+              </h3>
+              <p style={{
+                fontSize: '12px',
+                color: 'var(--text-subdued)',
+                lineHeight: 1.4,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                margin: 0
+              }}>
+                {item.subtitle}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* SECTION 3: Recents */}
+      <div style={{ marginBottom: '40px' }}>
+        {renderSectionHeader('Recents')}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+          gap: '18px'
+        }}>
+          {RECENTS_ITEMS.map(item => (
+            <div
+              key={item.id}
+              onClick={() => handleHomeCardClick(item)}
+              style={{
+                backgroundColor: '#181818',
+                padding: '16px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease',
+                position: 'relative'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = '#282828';
+                const playBtn = e.currentTarget.querySelector('.recent-play-btn') as HTMLElement;
+                if (playBtn) {
+                  playBtn.style.opacity = '1';
+                  playBtn.style.transform = 'translateY(0)';
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = '#181818';
+                const playBtn = e.currentTarget.querySelector('.recent-play-btn') as HTMLElement;
+                if (playBtn) {
+                  playBtn.style.opacity = '0';
+                  playBtn.style.transform = 'translateY(8px)';
+                }
+              }}
+            >
+              <div style={{
+                position: 'relative',
+                width: '100%',
+                paddingBottom: '100%',
+                marginBottom: '12px',
+                borderRadius: '6px',
+                overflow: 'hidden',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+              }}>
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+
+                {/* Progress bar for partially played tracks */}
+                {item.hasProgress && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: '3px',
+                    backgroundColor: 'rgba(255,255,255,0.2)'
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${item.progressPercent || 50}%`,
+                      backgroundColor: '#1ed760'
+                    }} />
+                  </div>
+                )}
+
+                {/* Floating Play Button */}
+                <button
+                  className="recent-play-btn"
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleHomeCardClick(item, true);
+                  }}
+                  title={`Play ${item.title}`}
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    bottom: '8px',
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '50%',
+                    backgroundColor: '#1ed760',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
+                    opacity: 0,
+                    transform: 'translateY(8px)',
+                    transition: 'opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
+                >
+                  <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                </button>
+              </div>
+
+              <h3 style={{
+                fontSize: '15px',
+                fontWeight: 700,
+                color: '#ffffff',
+                marginBottom: '4px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {item.title}
+              </h3>
+              <p style={{
+                fontSize: '12px',
+                color: 'var(--text-subdued)',
+                lineHeight: 1.4,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                margin: 0
+              }}>
+                {item.subtitle}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* SECTION 4: Recommended Stations (Spotify Radio style) */}
+      <div style={{ marginBottom: '40px' }}>
+        {renderSectionHeader('Recommended Stations', 'Non-stop music based on your favorite songs and artists.')}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+          gap: '18px'
+        }}>
+          {RECOMMENDED_STATIONS.map(item => (
+            <div
+              key={item.id}
+              onClick={() => handleHomeCardClick(item)}
+              style={{
+                backgroundColor: '#181818',
+                padding: '16px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease',
+                position: 'relative'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = '#282828';
+                const playBtn = e.currentTarget.querySelector('.station-play-btn') as HTMLElement;
+                if (playBtn) {
+                  playBtn.style.opacity = '1';
+                  playBtn.style.transform = 'translateY(0)';
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = '#181818';
+                const playBtn = e.currentTarget.querySelector('.station-play-btn') as HTMLElement;
+                if (playBtn) {
+                  playBtn.style.opacity = '0';
+                  playBtn.style.transform = 'translateY(8px)';
+                }
+              }}
+            >
+              {/* Radio Card Artwork with colored pastel backdrop & circular artist cutout */}
+              <div style={{
+                position: 'relative',
+                width: '100%',
+                paddingBottom: '100%',
+                marginBottom: '12px',
+                borderRadius: '6px',
+                overflow: 'hidden',
+                backgroundColor: item.badgeColor || '#57e389',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between'
+                }}>
+                  {/* Top Header: Spotify Logo / RADIO text */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      backgroundColor: '#000000',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', border: '2px solid #ffffff' }} />
+                    </div>
+                    <span style={{ fontSize: '10px', fontWeight: 900, color: '#000000', letterSpacing: '1px' }}>
+                      RADIO
+                    </span>
+                  </div>
+
+                  {/* Circular Artist Cutout */}
+                  <div style={{
+                    width: '74px',
+                    height: '74px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    margin: '0 auto',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                    border: '2px solid rgba(255,255,255,0.4)'
+                  }}>
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+
+                  {/* Station Title on card */}
+                  <span style={{
+                    fontSize: '16px',
+                    fontWeight: 900,
+                    color: '#000000',
+                    lineHeight: 1.1,
+                    letterSpacing: '-0.3px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {item.title}
+                  </span>
+                </div>
+
+                {/* Floating Play Button */}
+                <button
+                  className="station-play-btn"
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleHomeCardClick(item, true);
+                  }}
+                  title={`Play ${item.title}`}
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    bottom: '8px',
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '50%',
+                    backgroundColor: '#1ed760',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
+                    opacity: 0,
+                    transform: 'translateY(8px)',
+                    transition: 'opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
+                >
+                  <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                </button>
+              </div>
+
+              <h3 style={{
+                fontSize: '15px',
+                fontWeight: 700,
+                color: '#ffffff',
+                marginBottom: '4px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {item.title}
+              </h3>
+              <p style={{
+                fontSize: '12px',
+                color: 'var(--text-subdued)',
+                lineHeight: 1.4,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                margin: 0
+              }}>
+                {item.subtitle}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* SECTION 5: Your top mixes */}
+      <div style={{ marginBottom: '40px' }}>
+        {renderSectionHeader('Your top mixes')}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+          gap: '18px'
+        }}>
+          {TOP_MIXES.map(item => (
+            <div
+              key={item.id}
+              onClick={() => handleHomeCardClick(item)}
+              style={{
+                backgroundColor: '#181818',
+                padding: '16px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease',
+                position: 'relative'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = '#282828';
+                const playBtn = e.currentTarget.querySelector('.mix-card-play-btn') as HTMLElement;
+                if (playBtn) {
+                  playBtn.style.opacity = '1';
+                  playBtn.style.transform = 'translateY(0)';
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = '#181818';
+                const playBtn = e.currentTarget.querySelector('.mix-card-play-btn') as HTMLElement;
+                if (playBtn) {
+                  playBtn.style.opacity = '0';
+                  playBtn.style.transform = 'translateY(8px)';
+                }
+              }}
+            >
+              <div style={{
+                position: 'relative',
+                width: '100%',
+                paddingBottom: '100%',
+                marginBottom: '12px',
+                borderRadius: '6px',
+                overflow: 'hidden',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+              }}>
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+
+                {/* Bottom colored banner strip */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: '32px',
+                  backgroundColor: item.badgeColor || '#ffd152',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '0 10px'
+                }}>
+                  <span style={{
+                    fontSize: '12px',
+                    fontWeight: 900,
+                    color: '#000000',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {item.title}
+                  </span>
+                </div>
+
+                {/* Floating Play Button */}
+                <button
+                  className="mix-card-play-btn"
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleHomeCardClick(item, true);
+                  }}
+                  title={`Play ${item.title}`}
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    bottom: '8px',
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '50%',
+                    backgroundColor: '#1ed760',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
+                    opacity: 0,
+                    transform: 'translateY(8px)',
+                    transition: 'opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease',
+                    cursor: 'pointer',
+                    zIndex: 2
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
+                >
+                  <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                </button>
+              </div>
+
+              <h3 style={{
+                fontSize: '15px',
+                fontWeight: 700,
+                color: '#ffffff',
+                marginBottom: '4px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {item.title}
+              </h3>
+              <p style={{
+                fontSize: '12px',
+                color: 'var(--text-subdued)',
+                lineHeight: 1.4,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                margin: 0
+              }}>
+                {item.subtitle}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* SECTION 6: Recommended for today */}
+      <div style={{ marginBottom: '40px' }}>
+        {renderSectionHeader('Recommended for today', 'Inspired by your recent activity')}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+          gap: '18px'
+        }}>
+          {RECOMMENDED_FOR_TODAY.map(item => (
+            <div
+              key={item.id}
+              onClick={() => handleHomeCardClick(item)}
+              style={{
+                backgroundColor: '#181818',
+                padding: '16px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease',
+                position: 'relative'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = '#282828';
+                const playBtn = e.currentTarget.querySelector('.rec-play-btn') as HTMLElement;
+                if (playBtn) {
+                  playBtn.style.opacity = '1';
+                  playBtn.style.transform = 'translateY(0)';
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = '#181818';
+                const playBtn = e.currentTarget.querySelector('.rec-play-btn') as HTMLElement;
+                if (playBtn) {
+                  playBtn.style.opacity = '0';
+                  playBtn.style.transform = 'translateY(8px)';
+                }
+              }}
+            >
+              <div style={{
+                position: 'relative',
+                width: '100%',
+                paddingBottom: '100%',
+                marginBottom: '12px',
+                borderRadius: '6px',
+                overflow: 'hidden',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+              }}>
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+
+                {/* Floating Play Button */}
+                <button
+                  className="rec-play-btn"
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleHomeCardClick(item, true);
+                  }}
+                  title={`Play ${item.title}`}
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    bottom: '8px',
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '50%',
+                    backgroundColor: '#1ed760',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
+                    opacity: 0,
+                    transform: 'translateY(8px)',
+                    transition: 'opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
+                >
+                  <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                </button>
+              </div>
+
+              <h3 style={{
+                fontSize: '15px',
+                fontWeight: 700,
+                color: '#ffffff',
+                marginBottom: '4px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {item.title}
+              </h3>
+              <p style={{
+                fontSize: '12px',
+                color: 'var(--text-subdued)',
+                lineHeight: 1.4,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                margin: 0
+              }}>
+                {item.subtitle}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* SECTION 7: Large Featured Cards (Atmospheric Canvas Cards) */}
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '18px'
+        }}>
+          {FEATURED_RADIO_CARDS.map(item => (
+            <div
+              key={item.id}
+              onClick={() => handleHomeCardClick(item)}
+              style={{
+                position: 'relative',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                height: '380px',
+                cursor: 'pointer',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                padding: '20px',
+                transition: 'transform 0.2s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'scale(1.02)';
+                const playBtn = e.currentTarget.querySelector('.featured-play-btn') as HTMLElement;
+                if (playBtn) {
+                  playBtn.style.opacity = '1';
+                  playBtn.style.transform = 'translateY(0)';
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'scale(1)';
+                const playBtn = e.currentTarget.querySelector('.featured-play-btn') as HTMLElement;
+                if (playBtn) {
+                  playBtn.style.opacity = '0';
+                  playBtn.style.transform = 'translateY(8px)';
+                }
+              }}
+            >
+              {/* Background Artwork */}
+              <img
+                src={item.image}
+                alt={item.title}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  zIndex: 0
+                }}
+              />
+              {/* Dark Gradient Overlay */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 40%, rgba(0,0,0,0.85) 100%)',
+                zIndex: 1
+              }} />
+
+              {/* Top Content */}
+              <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column' }}>
+                <span style={{
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  marginBottom: '4px'
+                }}>
+                  {item.topSubtitle}
+                </span>
+                <span style={{
+                  fontSize: '22px',
+                  fontWeight: 800,
+                  color: '#ffffff',
+                  letterSpacing: '-0.5px'
+                }}>
+                  {item.title}
+                </span>
+              </div>
+
+              {/* Bottom Content & Play Button */}
+              <div style={{
+                position: 'relative',
+                zIndex: 2,
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'space-between'
+              }}>
+                <span style={{
+                  fontSize: '13px',
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  lineHeight: 1.4,
+                  maxWidth: '75%'
+                }}>
+                  {item.subtitle}
+                </span>
+
+                <button
+                  className="featured-play-btn"
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleHomeCardClick(item, true);
+                  }}
+                  title={`Play ${item.title}`}
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    backgroundColor: '#1ed760',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.5)',
+                    opacity: 0,
+                    transform: 'translateY(8px)',
+                    transition: 'opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease',
+                    cursor: 'pointer',
+                    flexShrink: 0
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
+                >
+                  <Play size={22} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                </button>
+              </div>
             </div>
           ))}
         </div>

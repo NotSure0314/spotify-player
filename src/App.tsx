@@ -469,6 +469,7 @@ export function App() {
             }}
             isSearching={isSearching}
             allTracks={allTracks}
+            userProfile={userProfile}
           />
         </main>
 
