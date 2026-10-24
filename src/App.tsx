@@ -116,7 +116,19 @@ export function App() {
           // Merge imported playlists (persisted across reloads) with user profile playlists
           const importedIds = new Set(savedImported.map(p => p.id));
           const deduplicatedUser = userPlaylists.filter(p => !importedIds.has(p.id));
-          const allPlaylists = [...savedImported, ...deduplicatedUser];
+          let allPlaylists = [...savedImported, ...deduplicatedUser];
+
+          // If any imported playlist was previously saved with <= 100 tracks, upgrade it if firstDetails has more
+          if (firstDetails && firstDetails.tracks.length > 0) {
+            allPlaylists = allPlaylists.map(p => {
+              if ((p.id === result.playlists[0].id || p.playlistId === result.playlists[0].playlistId) && firstDetails.tracks.length > p.tracks.length) {
+                const upgraded = { ...p, tracks: firstDetails.tracks, coverUrl: firstDetails.coverUrl || p.coverUrl };
+                addImportedPlaylist(upgraded);
+                return upgraded;
+              }
+              return p;
+            });
+          }
 
           setPlaylists(allPlaylists);
           setSelectedPlaylistId(prev => prev || allPlaylists[0]?.id || null);
@@ -202,9 +214,9 @@ export function App() {
     setSelectedPlaylistId(playlist.id);
     setCurrentView('playlist');
 
-    if (!target.tracks || target.tracks.length === 0) {
+    if (!target.tracks || target.tracks.length === 0 || target.tracks.length === 100) {
       const details = await fetchLivePlaylistDetails(playlist.id);
-      if (details && details.tracks.length > 0) {
+      if (details && details.tracks.length > (target.tracks?.length || 0)) {
         const fullPlaylist = {
           ...target,
           tracks: details.tracks,
@@ -230,21 +242,29 @@ export function App() {
   // Selected playlist object
   const selectedPlaylist = playlists.find(p => p.id === selectedPlaylistId) || playlists[0] || null;
 
-  // If selecting a playlist without loaded tracks, fetch them
+  // If selecting a playlist without loaded tracks or capped at 100, fetch full tracklist
   useEffect(() => {
     if (selectedPlaylistId) {
       const currentPl = playlists.find(p => p.id === selectedPlaylistId);
-      if (currentPl && currentPl.tracks.length === 0) {
+      if (!currentPl || currentPl.tracks.length === 0 || currentPl.tracks.length === 100) {
         fetchLivePlaylistDetails(selectedPlaylistId).then(details => {
-          if (details && details.tracks.length > 0) {
+          if (details && details.tracks.length > (currentPl?.tracks?.length || 0)) {
+            const fullPlaylist: Playlist = {
+              ...(currentPl || details),
+              tracks: details.tracks,
+              coverUrl: details.coverUrl || currentPl?.coverUrl || '',
+              description: details.description || currentPl?.description || 'Spotify Playlist',
+              gradient: details.gradient || currentPl?.gradient || '#1e3a8a'
+            };
+            addImportedPlaylist(fullPlaylist);
             setPlaylists(prev =>
-              prev.map(p => (p.id === selectedPlaylistId ? { ...p, tracks: details.tracks, coverUrl: details.coverUrl || p.coverUrl } : p))
+              prev.map(p => (p.id === selectedPlaylistId ? fullPlaylist : p))
             );
           }
         });
       }
     }
-  }, [selectedPlaylistId, playlists]);
+  }, [selectedPlaylistId]);
 
   // All tracks from user's loaded library
   const allTracks = playlists.flatMap(p => p.tracks);

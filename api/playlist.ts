@@ -61,7 +61,16 @@ export default async function handler(req: any, res: any) {
 
   // 2. Try local desktop CLI if available
   try {
-    const { stdout } = await execAsync(`"${CLI_PATH}" playlist get "${fullUri}" --format json`, { timeout: 3000 });
+    // If Spotify is not running, ensure it starts quietly in background
+    try {
+      const { stdout: statusOut } = await execAsync(`"${CLI_PATH}" status`, { timeout: 1000 }).catch(() => ({ stdout: '' }));
+      if (!statusOut.includes('is running')) {
+        await execAsync(`open -g -a Spotify`);
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    } catch {}
+
+    const { stdout } = await execAsync(`"${CLI_PATH}" playlist get "${fullUri}" --format json`, { timeout: 6000 });
     const plData = JSON.parse(stdout);
     if (plData.tracks && plData.tracks.length > 0) {
       // Trim Spotify desktop client's auto-appended recommendations

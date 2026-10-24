@@ -2032,131 +2032,136 @@ export const MainContent: React.FC<MainContentProps> = ({
           gap: '18px'
         }}>
           {FEATURED_RADIO_CARDS.map(item => (
-            <div
-              key={item.id}
-              onClick={() => handleHomeCardClick(item)}
-              style={{
-                position: 'relative',
-                borderRadius: '8px',
-                overflow: 'hidden',
-                height: '380px',
-                cursor: 'pointer',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                padding: '20px',
-                transition: 'transform 0.2s ease'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'scale(1.02)';
-                const playBtn = e.currentTarget.querySelector('.featured-play-btn') as HTMLElement;
-                if (playBtn) {
-                  playBtn.style.opacity = '1';
-                  playBtn.style.transform = 'translateY(0)';
-                }
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'scale(1)';
-                const playBtn = e.currentTarget.querySelector('.featured-play-btn') as HTMLElement;
-                if (playBtn) {
-                  playBtn.style.opacity = '0';
-                  playBtn.style.transform = 'translateY(8px)';
-                }
-              }}
-            >
-              {/* Background Artwork */}
-              <img
-                src={item.image}
-                alt={item.title}
+            <div key={item.id} style={{ display: 'flex', flexDirection: 'column' }}>
+              {item.topSubtitle && (
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  color: '#b3b3b3',
+                  marginBottom: '10px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  {item.topSubtitle}
+                </div>
+              )}
+              <div
+                onClick={() => handleHomeCardClick(item)}
                 style={{
+                  position: 'relative',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  height: '320px',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  padding: '20px',
+                  transition: 'transform 0.2s ease',
+                  flex: 1
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'scale(1.02)';
+                  const playBtn = e.currentTarget.querySelector('.featured-play-btn') as HTMLElement;
+                  if (playBtn) {
+                    playBtn.style.opacity = '1';
+                    playBtn.style.transform = 'translateY(0)';
+                  }
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  const playBtn = e.currentTarget.querySelector('.featured-play-btn') as HTMLElement;
+                  if (playBtn) {
+                    playBtn.style.opacity = '0';
+                    playBtn.style.transform = 'translateY(8px)';
+                  }
+                }}
+              >
+                {/* Background Artwork */}
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    zIndex: 0
+                  }}
+                />
+                {/* Dark Gradient Overlay */}
+                <div style={{
                   position: 'absolute',
                   top: 0,
                   left: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  zIndex: 0
-                }}
-              />
-              {/* Dark Gradient Overlay */}
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 40%, rgba(0,0,0,0.85) 100%)',
-                zIndex: 1
-              }} />
+                  right: 0,
+                  bottom: 0,
+                  background: 'linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.2) 40%, rgba(0,0,0,0.85) 100%)',
+                  zIndex: 1
+                }} />
 
-              {/* Top Content */}
-              <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column' }}>
-                <span style={{
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  marginBottom: '4px'
-                }}>
-                  {item.topSubtitle}
-                </span>
-                <span style={{
-                  fontSize: '22px',
-                  fontWeight: 800,
-                  color: '#ffffff',
-                  letterSpacing: '-0.5px'
-                }}>
-                  {item.title}
-                </span>
-              </div>
+                {/* Top Content */}
+                <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column' }}>
+                  <span style={{
+                    fontSize: '22px',
+                    fontWeight: 800,
+                    color: '#ffffff',
+                    letterSpacing: '-0.5px'
+                  }}>
+                    {item.title}
+                  </span>
+                </div>
 
-              {/* Bottom Content & Play Button */}
-              <div style={{
-                position: 'relative',
-                zIndex: 2,
-                display: 'flex',
-                alignItems: 'flex-end',
-                justifyContent: 'space-between'
-              }}>
-                <span style={{
-                  fontSize: '13px',
-                  color: 'rgba(255, 255, 255, 0.8)',
-                  lineHeight: 1.4,
-                  maxWidth: '75%'
+                {/* Bottom Content & Play Button */}
+                <div style={{
+                  position: 'relative',
+                  zIndex: 2,
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  justifyContent: 'space-between'
                 }}>
-                  {item.subtitle}
-                </span>
+                  <span style={{
+                    fontSize: '13px',
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    lineHeight: 1.4,
+                    maxWidth: '75%'
+                  }}>
+                    {item.subtitle}
+                  </span>
 
-                <button
-                  className="featured-play-btn"
-                  onClick={e => {
-                    e.stopPropagation();
-                    handleHomeCardClick(item, true);
-                  }}
-                  title={`Play ${item.title}`}
-                  style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '50%',
-                    backgroundColor: '#1ed760',
-                    border: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 8px 16px rgba(0,0,0,0.5)',
-                    opacity: 0,
-                    transform: 'translateY(8px)',
-                    transition: 'opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease',
-                    cursor: 'pointer',
-                    flexShrink: 0
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
-                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
-                >
-                  <Play size={22} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
-                </button>
+                  <button
+                    className="featured-play-btn"
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleHomeCardClick(item, true);
+                    }}
+                    title={`Play ${item.title}`}
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      backgroundColor: '#1ed760',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 8px 16px rgba(0,0,0,0.5)',
+                      opacity: 0,
+                      transform: 'translateY(8px)',
+                      transition: 'opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease',
+                      cursor: 'pointer',
+                      flexShrink: 0
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
+                  >
+                    <Play size={22} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
