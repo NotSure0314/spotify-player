@@ -22,6 +22,7 @@ export function App() {
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<Track[]>([]);
+  const [searchPlaylists, setSearchPlaylists] = useState<Playlist[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [userProfile, setUserProfile] = useState<SpotifyUserProfile | null>(getSavedUserProfile());
   const [isSyncModalOpen, setIsSyncModalOpen] = useState<boolean>(false);
@@ -128,23 +129,61 @@ export function App() {
     }
   };
 
-  // 4. Debounced Live Catalog Search
+  // 4. Debounced Live Catalog Search (Tracks + Playlists)
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
+      setSearchPlaylists([]);
       setIsSearching(false);
       return;
     }
 
     const timer = setTimeout(async () => {
       setIsSearching(true);
-      const results = await searchSpotifyCatalog(searchQuery);
-      setSearchResults(results);
+      const { tracks, playlists: foundPlaylists } = await searchSpotifyCatalog(searchQuery);
+      setSearchResults(tracks);
+      setSearchPlaylists(foundPlaylists);
       setIsSearching(false);
     }, 300);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Handle selecting or playing a searched playlist
+  const handleSelectSearchPlaylist = async (playlist: Playlist, autoPlay: boolean = false) => {
+    let target = playlists.find(p => p.id === playlist.id);
+    if (!target) {
+      setPlaylists(prev => [playlist, ...prev]);
+      target = playlist;
+    }
+
+    setSelectedPlaylistId(playlist.id);
+    setCurrentView('playlist');
+
+    if (!target.tracks || target.tracks.length === 0) {
+      const details = await fetchLivePlaylistDetails(playlist.id);
+      if (details && details.tracks.length > 0) {
+        setPlaylists(prev =>
+          prev.map(p =>
+            p.id === playlist.id
+              ? {
+                  ...p,
+                  tracks: details.tracks,
+                  coverUrl: details.coverUrl || p.coverUrl,
+                  description: details.description || p.description,
+                  gradient: details.gradient || p.gradient
+                }
+              : p
+          )
+        );
+        if (autoPlay) {
+          handlePlayTrack(details.tracks[0]);
+        }
+      }
+    } else if (autoPlay && target.tracks.length > 0) {
+      handlePlayTrack(target.tracks[0]);
+    }
+  };
 
   // Selected playlist object
   const selectedPlaylist = playlists.find(p => p.id === selectedPlaylistId) || playlists[0] || null;
@@ -392,6 +431,12 @@ export function App() {
             onToggleLikeTrack={toggleLikeTrack}
             searchQuery={searchQuery}
             searchResults={searchResults}
+            searchPlaylists={searchPlaylists}
+            onSelectSearchPlaylist={handleSelectSearchPlaylist}
+            onSelectSearchCategory={(cat: string) => {
+              setSearchQuery(cat);
+              handleSelectView('search');
+            }}
             isSearching={isSearching}
             allTracks={allTracks}
           />

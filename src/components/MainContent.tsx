@@ -15,6 +15,9 @@ interface MainContentProps {
   onToggleLikeTrack: (trackId: string) => void;
   searchQuery: string;
   searchResults: Track[];
+  searchPlaylists?: Playlist[];
+  onSelectSearchPlaylist?: (playlist: Playlist, autoPlay?: boolean) => void;
+  onSelectSearchCategory?: (category: string) => void;
   isSearching: boolean;
   allTracks: Track[];
 }
@@ -38,10 +41,14 @@ export const MainContent: React.FC<MainContentProps> = ({
   onToggleLikeTrack,
   searchQuery,
   searchResults,
+  searchPlaylists = [],
+  onSelectSearchPlaylist,
+  onSelectSearchCategory,
   isSearching,
   allTracks
 }) => {
   const [activeChip, setActiveChip] = useState<'all' | 'music' | 'podcasts'>('all');
+  const [searchFilter, setSearchFilter] = useState<'all' | 'tracks' | 'playlists'>('all');
   const [hoveredTrackIndex, setHoveredTrackIndex] = useState<number | null>(null);
 
   const getGreeting = () => {
@@ -51,123 +58,363 @@ export const MainContent: React.FC<MainContentProps> = ({
     return 'Good evening';
   };
 
+  // Helper renderer for track rows
+  const renderTrackRow = (t: Track, idx: number) => {
+    const isCurrent = currentTrack?.id === t.id;
+    const isLiked = likedTrackIds.has(t.id);
+    const isHovered = hoveredTrackIndex === idx;
+
+    return (
+      <div
+        key={t.id}
+        onClick={() => onPlayTrack(t)}
+        onMouseEnter={() => setHoveredTrackIndex(idx)}
+        onMouseLeave={() => setHoveredTrackIndex(null)}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '40px 4fr 3fr 100px',
+          alignItems: 'center',
+          padding: '8px 16px',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          backgroundColor: isCurrent ? 'rgba(255, 255, 255, 0.1)' : isHovered ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
+          transition: 'background-color 0.1s ease',
+          height: '56px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {isHovered ? (
+            <Play size={16} fill="#ffffff" color="#ffffff" />
+          ) : isCurrent && isPlaying ? (
+            <Play size={16} fill="#1ed760" color="#1ed760" />
+          ) : (
+            <span style={{ fontSize: '14px', color: isCurrent ? '#1ed760' : 'var(--text-subdued)' }}>
+              {idx + 1}
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <img
+            src={t.coverUrl}
+            alt={t.title}
+            style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }}
+          />
+          <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <span style={{
+              fontSize: '14px',
+              fontWeight: 600,
+              color: isCurrent ? '#1ed760' : '#ffffff',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {t.title}
+            </span>
+            <span style={{
+              fontSize: '12px',
+              color: 'var(--text-subdued)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {t.artist}
+            </span>
+          </div>
+        </div>
+
+        <span style={{
+          fontSize: '13px',
+          color: 'var(--text-subdued)',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
+        }}>
+          {t.album}
+        </span>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '16px' }}>
+          <button
+            onClick={e => {
+              e.stopPropagation();
+              onToggleLikeTrack(t.id);
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: isLiked ? '#1ed760' : isHovered ? 'var(--text-subdued)' : 'transparent'
+            }}
+          >
+            <Heart size={16} fill={isLiked ? '#1ed760' : 'none'} strokeWidth={isLiked ? 0 : 2} />
+          </button>
+          <span style={{ fontSize: '13px', color: 'var(--text-subdued)' }}>
+            {formatDuration(t.duration)}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
+  // Helper renderer for playlist cards
+  const renderPlaylistCard = (pl: Playlist) => (
+    <div
+      key={pl.id}
+      onClick={() => {
+        if (onSelectSearchPlaylist) {
+          onSelectSearchPlaylist(pl, false);
+        } else {
+          onSelectPlaylist(pl.id);
+        }
+      }}
+      style={{
+        backgroundColor: '#181818',
+        padding: '16px',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        transition: 'background-color 0.2s ease',
+        position: 'relative'
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.backgroundColor = '#282828';
+        const playBtn = e.currentTarget.querySelector('.search-card-play') as HTMLElement;
+        if (playBtn) {
+          playBtn.style.opacity = '1';
+          playBtn.style.transform = 'translateY(0)';
+        }
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.backgroundColor = '#181818';
+        const playBtn = e.currentTarget.querySelector('.search-card-play') as HTMLElement;
+        if (playBtn) {
+          playBtn.style.opacity = '0';
+          playBtn.style.transform = 'translateY(8px)';
+        }
+      }}
+    >
+      <div style={{
+        position: 'relative',
+        width: '100%',
+        paddingBottom: '100%',
+        marginBottom: '16px',
+        borderRadius: '6px',
+        overflow: 'hidden',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+      }}>
+        <img
+          src={pl.coverUrl}
+          alt={pl.title}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover'
+          }}
+        />
+        {/* Floating Play Button */}
+        <button
+          className="search-card-play"
+          onClick={e => {
+            e.stopPropagation();
+            if (onSelectSearchPlaylist) {
+              onSelectSearchPlaylist(pl, true);
+            } else {
+              onSelectPlaylist(pl.id);
+            }
+          }}
+          title={`Play ${pl.title}`}
+          style={{
+            position: 'absolute',
+            right: '8px',
+            bottom: '8px',
+            width: '48px',
+            height: '48px',
+            borderRadius: '50%',
+            backgroundColor: '#1ed760',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
+            opacity: 0,
+            transform: 'translateY(8px)',
+            transition: 'opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease',
+            cursor: 'pointer'
+          }}
+          onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
+          onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
+        >
+          <Play size={22} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <span style={{
+          fontSize: '16px',
+          fontWeight: 700,
+          color: '#ffffff',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          marginBottom: '4px'
+        }}>
+          {pl.title}
+        </span>
+        <span style={{
+          fontSize: '13px',
+          color: 'var(--text-subdued)',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
+        }}>
+          {pl.author ? `By ${pl.author}` : pl.description || 'Spotify Playlist'}
+        </span>
+      </div>
+    </div>
+  );
+
   // 1. SEARCH VIEW
   if (currentView === 'search') {
     return (
       <div style={{ padding: '24px 32px 32px 32px' }} className="animate-fade-in">
         {searchQuery.trim() ? (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 700 }}>
-                Results for "{searchQuery}"
-              </h2>
+            {/* Filter Pills (All, Songs, Playlists) */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', alignItems: 'center' }}>
+              {(['all', 'tracks', 'playlists'] as const).map(tab => {
+                const isActive = searchFilter === tab;
+                const label = tab === 'all' ? 'All' : tab === 'tracks' ? 'Songs' : 'Playlists';
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setSearchFilter(tab)}
+                    style={{
+                      padding: '6px 16px',
+                      borderRadius: '500px',
+                      border: 'none',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      backgroundColor: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.08)',
+                      color: isActive ? '#000000' : '#ffffff',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
               {isSearching && (
-                <span style={{ fontSize: '13px', color: '#1ed760' }}>Searching Spotify...</span>
+                <span style={{ fontSize: '13px', color: '#1ed760', marginLeft: 'auto' }}>Searching Spotify...</span>
               )}
             </div>
 
-            {searchResults.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {searchResults.map((t, idx) => {
-                  const isCurrent = currentTrack?.id === t.id;
-                  const isLiked = likedTrackIds.has(t.id);
-                  const isHovered = hoveredTrackIndex === idx;
-
-                  return (
-                    <div
-                      key={t.id}
-                      onClick={() => onPlayTrack(t)}
-                      onMouseEnter={() => setHoveredTrackIndex(idx)}
-                      onMouseLeave={() => setHoveredTrackIndex(null)}
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: '40px 4fr 3fr 100px',
-                        alignItems: 'center',
-                        padding: '8px 16px',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        backgroundColor: isCurrent ? 'rgba(255, 255, 255, 0.1)' : isHovered ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
-                        transition: 'background-color 0.1s ease',
-                        height: '56px'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {isHovered ? (
-                          <Play size={16} fill="#ffffff" color="#ffffff" />
-                        ) : isCurrent && isPlaying ? (
-                          <Play size={16} fill="#1ed760" color="#1ed760" />
-                        ) : (
-                          <span style={{ fontSize: '14px', color: isCurrent ? '#1ed760' : 'var(--text-subdued)' }}>
-                            {idx + 1}
-                          </span>
-                        )}
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                        <img
-                          src={t.coverUrl}
-                          alt={t.title}
-                          style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }}
-                        />
-                        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                          <span style={{
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            color: isCurrent ? '#1ed760' : '#ffffff',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>
-                            {t.title}
-                          </span>
-                          <span style={{
-                            fontSize: '12px',
-                            color: 'var(--text-subdued)',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>
-                            {t.artist}
-                          </span>
-                        </div>
-                      </div>
-
-                      <span style={{
-                        fontSize: '13px',
-                        color: 'var(--text-subdued)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}>
-                        {t.album}
-                      </span>
-
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '16px' }}>
+            {/* TAB: ALL */}
+            {searchFilter === 'all' && (
+              <div>
+                {/* Songs Section */}
+                {searchResults.length > 0 && (
+                  <div style={{ marginBottom: '36px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                      <h2 style={{ fontSize: '24px', fontWeight: 700 }}>Songs</h2>
+                      {searchResults.length > 4 && (
                         <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            onToggleLikeTrack(t.id);
-                          }}
+                          onClick={() => setSearchFilter('tracks')}
                           style={{
                             background: 'none',
                             border: 'none',
-                            cursor: 'pointer',
-                            color: isLiked ? '#1ed760' : isHovered ? 'var(--text-subdued)' : 'transparent'
+                            color: 'var(--text-subdued)',
+                            fontSize: '14px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
                           }}
+                          onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
+                          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
                         >
-                          <Heart size={16} fill={isLiked ? '#1ed760' : 'none'} strokeWidth={isLiked ? 0 : 2} />
+                          Show all
                         </button>
-                        <span style={{ fontSize: '13px', color: 'var(--text-subdued)' }}>
-                          {formatDuration(t.duration)}
-                        </span>
-                      </div>
+                      )}
                     </div>
-                  );
-                })}
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {searchResults.slice(0, 4).map((t, idx) => renderTrackRow(t, idx))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Playlists Section */}
+                {searchPlaylists.length > 0 && (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                      <h2 style={{ fontSize: '24px', fontWeight: 700 }}>Playlists</h2>
+                      {searchPlaylists.length > 6 && (
+                        <button
+                          onClick={() => setSearchFilter('playlists')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-subdued)',
+                            fontSize: '14px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
+                          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
+                        >
+                          Show all
+                        </button>
+                      )}
+                    </div>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                      gap: '24px'
+                    }}>
+                      {searchPlaylists.slice(0, 8).map(pl => renderPlaylistCard(pl))}
+                    </div>
+                  </div>
+                )}
+
+                {searchResults.length === 0 && searchPlaylists.length === 0 && !isSearching && (
+                  <p style={{ color: 'var(--text-subdued)', marginTop: '20px' }}>
+                    No results found for "{searchQuery}". Try searching for an artist, song, or playlist name.
+                  </p>
+                )}
               </div>
-            ) : !isSearching ? (
-              <p style={{ color: 'var(--text-subdued)', marginTop: '20px' }}>No tracks found.</p>
-            ) : null}
+            )}
+
+            {/* TAB: SONGS */}
+            {searchFilter === 'tracks' && (
+              <div>
+                <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '16px' }}>Songs</h2>
+                {searchResults.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {searchResults.map((t, idx) => renderTrackRow(t, idx))}
+                  </div>
+                ) : !isSearching ? (
+                  <p style={{ color: 'var(--text-subdued)', marginTop: '20px' }}>No songs found.</p>
+                ) : null}
+              </div>
+            )}
+
+            {/* TAB: PLAYLISTS */}
+            {searchFilter === 'playlists' && (
+              <div>
+                <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '16px' }}>Playlists</h2>
+                {searchPlaylists.length > 0 ? (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                    gap: '24px'
+                  }}>
+                    {searchPlaylists.map(pl => renderPlaylistCard(pl))}
+                  </div>
+                ) : !isSearching ? (
+                  <p style={{ color: 'var(--text-subdued)', marginTop: '20px' }}>No playlists found.</p>
+                ) : null}
+              </div>
+            )}
           </div>
         ) : (
           <div>
@@ -189,6 +436,7 @@ export const MainContent: React.FC<MainContentProps> = ({
               ].map(cat => (
                 <div
                   key={cat.name}
+                  onClick={() => onSelectSearchCategory && onSelectSearchCategory(cat.name)}
                   style={{
                     height: '180px',
                     backgroundColor: cat.bg,
@@ -197,8 +445,11 @@ export const MainContent: React.FC<MainContentProps> = ({
                     position: 'relative',
                     overflow: 'hidden',
                     cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    transition: 'transform 0.15s ease'
                   }}
+                  onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')}
+                  onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
                 >
                   <span style={{ fontSize: '20px', fontWeight: 800, color: '#ffffff' }}>{cat.name}</span>
                 </div>

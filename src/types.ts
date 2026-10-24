@@ -14,11 +14,14 @@ export interface Track {
 
 export interface Playlist {
   id: string;
+  playlistId?: string;
   title: string;
   description: string;
   coverUrl: string;
   gradient: string;
   tracks: Track[];
+  author?: string;
+  followers?: number;
 }
 
 export type RepeatMode = 'off' | 'all' | 'one';

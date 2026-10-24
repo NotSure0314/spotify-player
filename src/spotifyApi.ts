@@ -64,16 +64,24 @@ export async function fetchLivePlaylistDetails(uriOrId: string): Promise<Playlis
   }
 }
 
-export async function searchSpotifyCatalog(query: string): Promise<Track[]> {
-  if (!query.trim()) return [];
+export interface SearchResult {
+  tracks: Track[];
+  playlists: Playlist[];
+}
+
+export async function searchSpotifyCatalog(query: string): Promise<SearchResult> {
+  if (!query.trim()) return { tracks: [], playlists: [] };
   try {
     const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-    if (!res.ok) return [];
+    if (!res.ok) return { tracks: [], playlists: [] };
     const data = await res.json();
-    return data.tracks || [];
+    return {
+      tracks: data.tracks || [],
+      playlists: data.playlists || []
+    };
   } catch (err) {
     console.error('Error searching catalog:', err);
-    return [];
+    return { tracks: [], playlists: [] };
   }
 }
 
