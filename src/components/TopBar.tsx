@@ -28,6 +28,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       justifyContent: 'space-between',
       padding: '0 24px',
       backgroundColor: '#000000',
+      position: 'relative',
       zIndex: 100,
       flexShrink: 0
     }}>
@@ -40,7 +41,8 @@ export const TopBar: React.FC<TopBarProps> = ({
           alignItems: 'center',
           cursor: 'pointer',
           padding: '4px',
-          transition: 'transform 0.15s ease'
+          transition: 'transform 0.15s ease',
+          zIndex: 2
         }}
         onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.06)')}
         onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
@@ -48,8 +50,19 @@ export const TopBar: React.FC<TopBarProps> = ({
         <SpotifyLogo size={32} color="#ffffff" />
       </div>
 
-      {/* Center: Spotify Home + Pill Search Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, maxWidth: '540px', margin: '0 auto' }}>
+      {/* Center: Spotify Home + Pill Search Bar (Exactly Centered in Viewport) */}
+      <div style={{
+        position: 'absolute',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        width: 'calc(100% - 460px)',
+        maxWidth: '520px',
+        minWidth: '320px',
+        zIndex: 1
+      }}>
         {/* Home Button (Circle) */}
         <button
           onClick={() => onSelectView('home')}
@@ -132,7 +145,13 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       {/* Right: Sync User, Notifications, Profile */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        marginLeft: 'auto',
+        zIndex: 2
+      }}>
         {userProfile ? (
           <button
             onClick={onOpenSyncModal}
