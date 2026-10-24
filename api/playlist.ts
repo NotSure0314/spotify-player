@@ -122,11 +122,11 @@ export default async function handler(req: any, res: any) {
 
       const getPlaylistPresetGradient = (title: string) => {
         const t = (title || '').toLowerCase();
-        if (t.includes('kitter') || t.includes('hello')) return '#b91c1c'; // Vibrant Red matching user screenshot
+        if (t.includes('kitter') || t.includes('hello')) return '#b91c1c'; // Vibrant Red
+        if (t.includes('gym')) return '#77010b'; // Iron Man Crimson Red
         if (t.includes('kanye')) return '#831843'; // Crimson Plum
         if (t.includes('white girl')) return '#db2777'; // Electric Hot Pink
-        if (t.includes('gym')) return '#1e3a8a'; // Deep Navy
-        return '#1e3a8a';
+        return '#77010b';
       };
 
       return res.status(200).json({
@@ -203,11 +203,11 @@ export default async function handler(req: any, res: any) {
 
     const getPlaylistPresetGradient = (title: string) => {
       const t = (title || '').toLowerCase();
-      if (t.includes('kitter') || t.includes('hello')) return '#b91c1c'; // Vibrant Red matching user screenshot
+      if (t.includes('kitter') || t.includes('hello')) return '#b91c1c'; // Vibrant Red
+      if (t.includes('gym')) return '#77010b'; // Iron Man Crimson Red
       if (t.includes('kanye')) return '#831843'; // Crimson Plum
       if (t.includes('white girl')) return '#db2777'; // Electric Hot Pink
-      if (t.includes('gym')) return '#1e3a8a'; // Deep Navy
-      return '#1e3a8a';
+      return '#77010b';
     };
 
     return res.status(200).json({

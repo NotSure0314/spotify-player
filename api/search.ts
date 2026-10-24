@@ -9,12 +9,12 @@ const coverCache = new Map<string, string>();
 function getPlaylistGradient(title: string, idx: number = 0): string {
   const t = (title || '').toLowerCase();
   if (t.includes('kitter') || t.includes('hello')) return '#b91c1c';
+  if (t.includes('gym')) return '#77010b';
   if (t.includes('kanye')) return '#831843';
   if (t.includes('white girl')) return '#db2777';
-  if (t.includes('gym')) return '#1e3a8a';
   if (t.includes('drake')) return '#312e81';
   if (t.includes('lofi') || t.includes('chill')) return '#4c1d95';
-  const fallback = ['#4c1d95', '#1e3a8a', '#78350f', '#14532d', '#831843', '#701a75'];
+  const fallback = ['#77010b', '#831843', '#4c1d95', '#1e3a8a', '#78350f', '#065f46'];
   return fallback[idx % fallback.length];
 }
 

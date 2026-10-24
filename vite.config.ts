@@ -28,11 +28,11 @@ const CURATED_PUBLIC_PLAYLISTS = [
 
 function getPlaylistPresetGradient(title: string, idx: number = 0): string {
   const t = (title || '').toLowerCase();
-  if (t.includes('kitter') || t.includes('hello')) return '#b91c1c'; // Vibrant Red matching user screenshot
+  if (t.includes('kitter') || t.includes('hello')) return '#b91c1c'; // Vibrant Red
+  if (t.includes('gym')) return '#77010b'; // Iron Man Crimson Red
   if (t.includes('kanye')) return '#831843'; // Crimson Plum
   if (t.includes('white girl')) return '#db2777'; // Electric Hot Pink
-  if (t.includes('gym')) return '#1e3a8a'; // Deep Navy
-  const fallback = ['#4c1d95', '#1e3a8a', '#78350f', '#14532d', '#831843', '#701a75'];
+  const fallback = ['#77010b', '#831843', '#4c1d95', '#1e3a8a', '#78350f', '#065f46'];
   return fallback[idx % fallback.length];
 }
 

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Play, Pause, Heart, Clock, MoreHorizontal, ArrowDownCircle } from 'lucide-react';
 import { Playlist, Track } from '../types';
+import { extractDominantColor, getFallbackPlaylistColor } from '../utils/colorExtractor';
 
 interface MainContentProps {
   currentView: string;
@@ -50,6 +51,21 @@ export const MainContent: React.FC<MainContentProps> = ({
   const [activeChip, setActiveChip] = useState<'all' | 'music' | 'podcasts'>('all');
   const [searchFilter, setSearchFilter] = useState<'all' | 'tracks' | 'playlists'>('all');
   const [hoveredTrackIndex, setHoveredTrackIndex] = useState<number | null>(null);
+  const [extractedHeaderColor, setExtractedHeaderColor] = useState<string>('#77010b');
+
+  useEffect(() => {
+    if (!selectedPlaylist) return;
+    const initial = getFallbackPlaylistColor(selectedPlaylist.title, selectedPlaylist.coverUrl);
+    setExtractedHeaderColor(initial);
+
+    if (selectedPlaylist.coverUrl) {
+      extractDominantColor(selectedPlaylist.coverUrl, selectedPlaylist.title).then(color => {
+        if (color) {
+          setExtractedHeaderColor(color);
+        }
+      });
+    }
+  }, [selectedPlaylist?.id, selectedPlaylist?.coverUrl]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -488,17 +504,9 @@ export const MainContent: React.FC<MainContentProps> = ({
     const minutes = Math.floor((totalDurationSeconds % 3600) / 60);
     const durationText = hours > 0 ? `${hours} hr ${minutes} min` : `${minutes} min`;
 
-    const getDynamicHeaderColor = () => {
-      if (isLikedView) return '#450af5';
-      const titleLower = (playlist.title || '').toLowerCase();
-      if (titleLower.includes('kitter') || titleLower.includes('hello')) return '#b91c1c'; // Vibrant Red matching user screenshot
-      if (titleLower.includes('kanye')) return '#831843'; // Crimson Plum
-      if (titleLower.includes('white girl')) return '#db2777'; // Electric Hot Pink
-      if (titleLower.includes('gym')) return '#1e3a8a'; // Deep Navy
-      return playlist.gradient || '#1e3a8a';
-    };
-
-    const headerColor = getDynamicHeaderColor();
+    const headerColor = isLikedView
+      ? '#450af5'
+      : (extractedHeaderColor || getFallbackPlaylistColor(playlist.title, playlist.coverUrl));
 
     return (
       <div className="animate-fade-in" style={{ paddingBottom: '32px' }}>
@@ -506,6 +514,7 @@ export const MainContent: React.FC<MainContentProps> = ({
         <div style={{
           padding: '40px 32px 24px 32px',
           background: `linear-gradient(to bottom, ${headerColor} 0%, rgba(18, 18, 18, 0.95) 100%)`,
+          transition: 'background 0.3s ease',
           display: 'flex',
           alignItems: 'flex-end',
           gap: '24px',
