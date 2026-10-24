@@ -1,6 +1,15 @@
 import { defineConfig, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import url from 'url';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+const CLI_PATH = '/Applications/Spotify.app/Contents/MacOS/spotify_cli';
+
+const globalCoverCache = new Map<string, string>();
+const globalAlbumCache = new Map<string, string>();
+const ytCache = new Map<string, string>();
 
 function spotifyStandalonePlugin(): Plugin {
   return {
@@ -19,7 +28,34 @@ function spotifyStandalonePlugin(): Plugin {
         res.setHeader('Access-Control-Allow-Origin', '*');
 
         try {
-          if (pathname === '/api/user') {
+          if (pathname === '/api/yt') {
+            const title = (query.title || query.q || '') as string;
+            const artist = (query.artist || '') as string;
+            const cacheKey = `${title}-${artist}`.toLowerCase();
+
+            if (ytCache.has(cacheKey)) {
+              return res.end(JSON.stringify({ videoId: ytCache.get(cacheKey) }));
+            }
+
+            const searchQuery = `${title} ${artist} audio`.trim();
+            try {
+              const ytRes = await fetch(`https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery)}`, {
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                }
+              });
+              const html = await ytRes.text();
+              const match = html.match(/\/watch\?v=([a-zA-Z0-9_-]{11})/);
+              if (match) {
+                const videoId = match[1];
+                ytCache.set(cacheKey, videoId);
+                return res.end(JSON.stringify({ videoId }));
+              }
+            } catch (err) {
+              console.warn('YouTube search error:', err);
+            }
+            return res.end(JSON.stringify({ videoId: null }));
+          } else if (pathname === '/api/user') {
             const username = (query.username || query.user || '') as string;
             if (!username.trim()) {
               res.statusCode = 400;
@@ -97,10 +133,72 @@ function spotifyStandalonePlugin(): Plugin {
               cleanId = cleanId.replace('spotify:playlist:', '').replace(/[^a-zA-Z0-9]/g, '');
             }
 
-            const coverMap = new Map<string, string>();
-            const albumMap = new Map<string, string>();
+            const fullUri = `spotify:playlist:${cleanId}`;
 
-            // 1. Fetch main page initialState for real album covers
+            // Try local CLI first if available (provides 100% full playlist up to 200 tracks)
+            try {
+              const { stdout } = await execAsync(`"${CLI_PATH}" playlist get "${fullUri}" --format json`, { timeout: 3000 });
+              const plData = JSON.parse(stdout);
+              if (plData.tracks && plData.tracks.length > 0) {
+                const trackUris = plData.tracks.map((t: any) => t.uri).filter(Boolean);
+                const batchSize = 40;
+                for (let i = 0; i < Math.min(trackUris.length, 200); i += batchSize) {
+                  const batch = trackUris.slice(i, i + batchSize);
+                  const missingFromCache = batch.filter((u: string) => !globalCoverCache.has(u));
+                  if (missingFromCache.length > 0) {
+                    try {
+                      const urisArg = missingFromCache.map((u: string) => `"${u}"`).join(' ');
+                      const { stdout: lookupOut } = await execAsync(`"${CLI_PATH}" lookup ${urisArg} --format json`, { timeout: 3000 });
+                      const lookupData = JSON.parse(lookupOut);
+                      (lookupData.entities || []).forEach((e: any) => {
+                        if (e.uri && e.image_url) {
+                          const highRes = e.image_url.replace('ab67616d00004851', 'ab67616d00001e02');
+                          globalCoverCache.set(e.uri, highRes);
+                          if (e.parent?.name) globalAlbumCache.set(e.uri, e.parent.name);
+                        }
+                      });
+                    } catch {}
+                  }
+                }
+
+                let playlistCover = globalCoverCache.get(fullUri) || '';
+                if (!playlistCover) {
+                  try {
+                    const { stdout: plLookup } = await execAsync(`"${CLI_PATH}" lookup "${fullUri}" --format json`, { timeout: 2000 });
+                    const plLookupData = JSON.parse(plLookup);
+                    playlistCover = plLookupData.entities?.[0]?.image_url || '';
+                    if (playlistCover) globalCoverCache.set(fullUri, playlistCover);
+                  } catch {}
+                }
+
+                const tracks = plData.tracks.map((t: any, index: number) => {
+                  const cover = globalCoverCache.get(t.uri) || playlistCover || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80';
+                  const album = globalAlbumCache.get(t.uri) || t.album || plData.name;
+                  return {
+                    id: t.uri || `spotify:track:${cleanId}-${index}`,
+                    title: t.name || 'Unknown Title',
+                    artist: (t.artists || []).join(', ') || 'Unknown Artist',
+                    album,
+                    duration: t.duration || 180,
+                    coverUrl: cover,
+                    gradient: '#1e3a8a',
+                    tempo: 80 + (index % 5) * 4
+                  };
+                });
+
+                return res.end(JSON.stringify({
+                  id: fullUri,
+                  playlistId: cleanId,
+                  title: plData.name || 'Untitled Playlist',
+                  description: plData.description || 'Spotify Playlist',
+                  coverUrl: playlistCover || tracks[0]?.coverUrl || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80',
+                  gradient: '#4c1d95',
+                  tracks
+                }));
+              }
+            } catch {}
+
+            // Fallback to web scraping & oEmbed
             try {
               const pageRes = await fetch(`https://open.spotify.com/playlist/${cleanId}`);
               if (pageRes.ok) {
@@ -109,23 +207,20 @@ function spotifyStandalonePlugin(): Plugin {
                 if (stateMatch) {
                   const raw = Buffer.from(stateMatch[1], 'base64').toString('utf-8');
                   const json = JSON.parse(raw);
-                  const item = json.entities?.items?.[`spotify:playlist:${cleanId}`];
+                  const item = json.entities?.items?.[fullUri];
                   (item?.content?.items || []).forEach((ci: any) => {
                     const data = ci?.itemV2?.data;
                     if (data?.uri) {
                       const cover = data.albumOfTrack?.coverArt?.sources?.[0]?.url;
                       const album = data.albumOfTrack?.name;
-                      if (cover) coverMap.set(data.uri, cover);
-                      if (album) albumMap.set(data.uri, album);
+                      if (cover) globalCoverCache.set(data.uri, cover);
+                      if (album) globalAlbumCache.set(data.uri, album);
                     }
                   });
                 }
               }
-            } catch (e) {
-              console.warn('InitialState extraction warning:', e);
-            }
+            } catch {}
 
-            // 2. Fetch embed page for all tracks
             const spotifyRes = await fetch(`https://open.spotify.com/embed/playlist/${cleanId}`);
             const html = await spotifyRes.text();
 
@@ -145,24 +240,26 @@ function spotifyStandalonePlugin(): Plugin {
             const playlistCover = entity.coverArt?.sources?.[0]?.url || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80';
             const rawTrackList = entity.trackList || [];
 
-            // 3. For any tracks missing individual album covers, fetch from oEmbed
-            const missingTracks = rawTrackList.filter((t: any) => !coverMap.has(t.uri));
-            if (missingTracks.length > 0) {
-              await Promise.all(missingTracks.slice(0, 30).map(async (t: any) => {
+            // Resolve ALL missing tracks in chunks of 15
+            const missingTracks = rawTrackList.filter((t: any) => !globalCoverCache.has(t.uri));
+            const chunkSize = 15;
+            for (let i = 0; i < missingTracks.length; i += chunkSize) {
+              const chunk = missingTracks.slice(i, i + chunkSize);
+              await Promise.all(chunk.map(async (t: any) => {
                 try {
                   const trackId = t.uri.replace('spotify:track:', '');
                   const r = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/track/${trackId}`);
                   if (r.ok) {
                     const d = await r.json();
-                    if (d.thumbnail_url) coverMap.set(t.uri, d.thumbnail_url);
+                    if (d.thumbnail_url) globalCoverCache.set(t.uri, d.thumbnail_url);
                   }
                 } catch {}
               }));
             }
 
             const tracks = rawTrackList.map((t: any, index: number) => {
-              const trackCover = coverMap.get(t.uri) || playlistCover;
-              const trackAlbum = albumMap.get(t.uri) || entity.name || entity.title || 'Spotify Playlist';
+              const trackCover = globalCoverCache.get(t.uri) || playlistCover;
+              const trackAlbum = globalAlbumCache.get(t.uri) || entity.name || entity.title || 'Spotify Playlist';
 
               return {
                 id: t.uri || `spotify:track:${cleanId}-${index}`,
@@ -178,7 +275,7 @@ function spotifyStandalonePlugin(): Plugin {
             });
 
             return res.end(JSON.stringify({
-              id: entity.uri || `spotify:playlist:${cleanId}`,
+              id: fullUri,
               playlistId: cleanId,
               title: entity.name || entity.title || 'Untitled Playlist',
               description: entity.subtitle ? `By ${entity.subtitle}` : 'Spotify Playlist',
