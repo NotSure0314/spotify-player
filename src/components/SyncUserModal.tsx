@@ -135,7 +135,7 @@ export const SyncUserModal: React.FC<SyncUserModalProps> = ({
               <User size={18} color="#777" />
               <input
                 type="text"
-                placeholder="e.g. Shreeji or gqfy40kjxlg18x0ygxux5ramv"
+                placeholder="e.g. spotify or your_spotify_username"
                 value={usernameInput}
                 onChange={e => setUsernameInput(e.target.value)}
                 autoFocus
@@ -167,7 +167,7 @@ export const SyncUserModal: React.FC<SyncUserModalProps> = ({
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
                 type="button"
-                onClick={() => handleQuickSelect('gqfy40kjxlg18x0ygxux5ramv')}
+                onClick={() => handleQuickSelect('spotify')}
                 style={{
                   backgroundColor: '#2a2a2a',
                   border: '1px solid #3e3e3e',
@@ -185,26 +185,7 @@ export const SyncUserModal: React.FC<SyncUserModalProps> = ({
                 onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#2a2a2a')}
               >
                 <Sparkles size={12} color="#1ed760" />
-                <span>Shreeji (Your Library)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickSelect('spotify')}
-                style={{
-                  backgroundColor: '#2a2a2a',
-                  border: '1px solid #3e3e3e',
-                  color: '#ffffff',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  padding: '6px 12px',
-                  borderRadius: '500px',
-                  cursor: 'pointer'
-                }}
-                onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#383838')}
-                onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#2a2a2a')}
-              >
-                Spotify Official
+                <span>Spotify Official</span>
               </button>
             </div>
           </div>

@@ -80,7 +80,7 @@ export function App() {
   useEffect(() => {
     async function initUser() {
       const saved = getSavedUserProfile();
-      const targetUser = saved?.id || 'gqfy40kjxlg18x0ygxux5ramv';
+      const targetUser = saved?.id || 'spotify';
       const savedImported = getSavedImportedPlaylists();
 
       try {

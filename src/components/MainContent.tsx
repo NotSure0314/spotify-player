@@ -568,7 +568,7 @@ export const MainContent: React.FC<MainContentProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 600, marginTop: '6px' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ fontSize: '16px', fontWeight: 300 }}>+</span>
-                <span>Shreeji</span>
+                <span>{playlist.author || 'Spotify'}</span>
               </span>
               <span>•</span>
               <span>{playlist.tracks.length} songs,</span>

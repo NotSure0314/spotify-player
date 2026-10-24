@@ -31,7 +31,9 @@ A functional desktop player application reconstructed based on the Spotify Deskt
 ## Quick Start
 
 ```bash
-cd /Users/Shreeji/Projects/spotify-player
+git clone https://github.com/NotSure0314/spotify-player.git
+cd spotify-player
+npm install
 npm run dev
 ```
 
