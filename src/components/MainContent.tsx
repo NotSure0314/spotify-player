@@ -52,6 +52,31 @@ export const MainContent: React.FC<MainContentProps> = ({
   const [searchFilter, setSearchFilter] = useState<'all' | 'tracks' | 'playlists'>('all');
   const [hoveredTrackIndex, setHoveredTrackIndex] = useState<number | null>(null);
   const [extractedHeaderColor, setExtractedHeaderColor] = useState<string>('#77010b');
+  const [scrolledPastHero, setScrolledPastHero] = useState<boolean>(false);
+
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (!mainEl) return;
+
+    const handleScroll = () => {
+      setScrolledPastHero(mainEl.scrollTop > 240);
+    };
+
+    mainEl.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
+    return () => {
+      mainEl.removeEventListener('scroll', handleScroll);
+    };
+  }, [selectedPlaylist?.id, currentView]);
+
+  const getTrackDateAdded = (index: number) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = ((index * 7 + 13) % 28) + 1;
+    const month = months[(index * 3 + 2) % 12];
+    const year = 2026 - Math.floor(index / 60);
+    return `${month} ${day < 10 ? '0' : ''}${day}, ${year}`;
+  };
 
   useEffect(() => {
     if (!selectedPlaylist) return;
@@ -510,6 +535,85 @@ export const MainContent: React.FC<MainContentProps> = ({
 
     return (
       <div className="animate-fade-in" style={{ paddingBottom: '32px' }}>
+        {/* Sticky Playlist Header Bar (Dominant Color, Play Button, Playlist Title) */}
+        <div style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 30,
+          width: '100%',
+          height: '64px',
+          marginBottom: '-64px',
+          backgroundColor: scrolledPastHero ? headerColor : 'transparent',
+          boxShadow: scrolledPastHero ? '0 4px 20px rgba(0, 0, 0, 0.5)' : 'none',
+          transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 32px',
+          gap: '16px',
+          pointerEvents: scrolledPastHero ? 'auto' : 'none'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            opacity: scrolledPastHero ? 1 : 0,
+            transform: scrolledPastHero ? 'translateY(0)' : 'translateY(8px)',
+            transition: 'opacity 0.2s ease, transform 0.2s ease'
+          }}>
+            <button
+              onClick={() => {
+                if (playlist.tracks.length > 0) {
+                  if (currentTrack && playlist.tracks.some(t => t.id === currentTrack.id)) {
+                    onTogglePlay();
+                  } else {
+                    onPlayTrack(playlist.tracks[0]);
+                  }
+                }
+              }}
+              title="Play playlist"
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '50%',
+                backgroundColor: '#1ed760',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                transition: 'transform 0.15s ease, background-color 0.15s ease',
+                flexShrink: 0
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'scale(1.06)';
+                e.currentTarget.style.backgroundColor = '#1fdf64';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.backgroundColor = '#1ed760';
+              }}
+            >
+              {isPlaying && currentTrack && playlist.tracks.some(t => t.id === currentTrack.id) ? (
+                <Pause size={20} fill="#000000" color="#000000" />
+              ) : (
+                <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+              )}
+            </button>
+            <span style={{
+              fontSize: '24px',
+              fontWeight: 700,
+              color: '#ffffff',
+              letterSpacing: '-0.5px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {playlist.title}
+            </span>
+          </div>
+        </div>
+
         {/* Dynamic Gradient Hero Header */}
         <div style={{
           padding: '40px 32px 24px 32px',
@@ -676,7 +780,7 @@ export const MainContent: React.FC<MainContentProps> = ({
           {/* Table Header */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: '40px 4fr 3fr 100px',
+            gridTemplateColumns: '40px 4fr 3fr 2fr 100px',
             padding: '8px 16px',
             borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
             fontSize: '12px',
@@ -686,13 +790,14 @@ export const MainContent: React.FC<MainContentProps> = ({
             textTransform: 'uppercase',
             marginBottom: '8px',
             position: 'sticky',
-            top: 0,
-            zIndex: 10,
+            top: '64px',
+            zIndex: 25,
             backgroundColor: 'var(--background-base)'
           }}>
             <span style={{ textAlign: 'center' }}>#</span>
             <span>Title</span>
             <span>Album</span>
+            <span>Date added</span>
             <div style={{ display: 'flex', justifyContent: 'flex-end', paddingRight: '8px' }}>
               <Clock size={16} />
             </div>
@@ -713,7 +818,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   onMouseLeave={() => setHoveredTrackIndex(null)}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '40px 4fr 3fr 100px',
+                    gridTemplateColumns: '40px 4fr 3fr 2fr 100px',
                     alignItems: 'center',
                     padding: '8px 16px',
                     borderRadius: '4px',
@@ -775,6 +880,17 @@ export const MainContent: React.FC<MainContentProps> = ({
                     textOverflow: 'ellipsis'
                   }}>
                     {track.album}
+                  </span>
+
+                  {/* Date Added */}
+                  <span style={{
+                    fontSize: '13px',
+                    color: 'var(--text-subdued)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    {getTrackDateAdded(index)}
                   </span>
 
                   {/* Duration & Heart */}
