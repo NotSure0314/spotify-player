@@ -227,44 +227,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* 4. Playlists Scroll List */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '4px 8px' }}>
-        {/* Liked Songs Entry */}
-        <div
-          onClick={() => onSelectView('liked')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '8px',
-            borderRadius: 'var(--card-radius)',
-            cursor: 'pointer',
-            backgroundColor: currentView === 'liked' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-            transition: 'background-color 0.15s ease'
-          }}
-          onMouseEnter={e => {
-            if (currentView !== 'liked') e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-          }}
-          onMouseLeave={e => {
-            if (currentView !== 'liked') e.currentTarget.style.backgroundColor = 'transparent';
-          }}
-        >
-          <div style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '4px',
-            background: 'linear-gradient(135deg, #450af5, #c4efd9)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#ffffff',
-            flexShrink: 0
-          }}>
-            <Heart size={20} fill="#ffffff" />
+        {/* Liked Songs Entry - Only displayed if user has liked at least 1 song */}
+        {likedCount > 0 && (
+          <div
+            onClick={() => onSelectView('liked')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '8px',
+              borderRadius: 'var(--card-radius)',
+              cursor: 'pointer',
+              backgroundColor: currentView === 'liked' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+              transition: 'background-color 0.15s ease'
+            }}
+            onMouseEnter={e => {
+              if (currentView !== 'liked') e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+            }}
+            onMouseLeave={e => {
+              if (currentView !== 'liked') e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+          >
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '4px',
+              background: 'linear-gradient(135deg, #450af5, #c4efd9)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff',
+              flexShrink: 0
+            }}>
+              <Heart size={20} fill="#ffffff" />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-base)' }}>Liked Songs</span>
+              <span style={{ fontSize: '12px', color: 'var(--text-subdued)' }}>Playlist • {likedCount} song{likedCount === 1 ? '' : 's'}</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
-            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-base)' }}>Liked Songs</span>
-            <span style={{ fontSize: '12px', color: 'var(--text-subdued)' }}>Playlist • {likedCount} songs</span>
-          </div>
-        </div>
+        )}
 
         {/* User Playlists */}
         {/* Empty Playlists State */}
