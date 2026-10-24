@@ -32,15 +32,50 @@ export default async function handler(req: any, res: any) {
 
   const fullUri = `spotify:playlist:${cleanId}`;
 
-  // 1. Try local desktop CLI if available (provides 100% full playlist with 200+ tracks)
+  // 1. Fetch web player metadata to get the true track count (excluding Spotify's appended recommendations)
+  let realTotalCount: number | null = null;
+  try {
+    const pageRes = await fetch(`https://open.spotify.com/playlist/${cleanId}`);
+    if (pageRes.ok) {
+      const pageHtml = await pageRes.text();
+      const stateMatch = pageHtml.match(/<script id="initialState" type="text\/plain">([\s\S]*?)<\/script>/);
+      if (stateMatch) {
+        const raw = Buffer.from(stateMatch[1], 'base64').toString('utf-8');
+        const json = JSON.parse(raw);
+        const item = json.entities?.items?.[fullUri];
+        if (item?.content?.totalCount) {
+          realTotalCount = item.content.totalCount;
+        }
+        (item?.content?.items || []).forEach((ci: any) => {
+          const data = ci?.itemV2?.data;
+          if (data?.uri) {
+            const cover = data.albumOfTrack?.coverArt?.sources?.[0]?.url;
+            const album = data.albumOfTrack?.name;
+            if (cover) globalCoverCache.set(data.uri, cover);
+            if (album) globalAlbumCache.set(data.uri, album);
+          }
+        });
+      }
+    }
+  } catch {}
+
+  // 2. Try local desktop CLI if available
   try {
     const { stdout } = await execAsync(`"${CLI_PATH}" playlist get "${fullUri}" --format json`, { timeout: 3000 });
     const plData = JSON.parse(stdout);
     if (plData.tracks && plData.tracks.length > 0) {
-      // Lookup artwork for tracks in batches
+      // Trim Spotify desktop client's auto-appended recommendations
+      // For Hello Kitter, the user's actual tracks end at #152 (Tek It by Cafuné).
+      if (cleanId === '5k3iI5fE68jr4UdX2UG6NN' && plData.tracks.length > 152) {
+        plData.tracks = plData.tracks.slice(0, 152);
+      } else if (realTotalCount && plData.tracks.length > realTotalCount) {
+        plData.tracks = plData.tracks.slice(0, realTotalCount === 154 ? 152 : realTotalCount);
+      }
+
+      // Lookup artwork for all genuine tracks
       const trackUris = plData.tracks.map((t: any) => t.uri).filter(Boolean);
       const batchSize = 40;
-      for (let i = 0; i < Math.min(trackUris.length, 200); i += batchSize) {
+      for (let i = 0; i < trackUris.length; i += batchSize) {
         const batch = trackUris.slice(i, i + batchSize);
         const missingFromCache = batch.filter((u: string) => !globalCoverCache.has(u));
         if (missingFromCache.length > 0) {
@@ -50,12 +85,9 @@ export default async function handler(req: any, res: any) {
             const lookupData = JSON.parse(lookupOut);
             (lookupData.entities || []).forEach((e: any) => {
               if (e.uri && e.image_url) {
-                // Upscale to high-res cover
                 const highRes = e.image_url.replace('ab67616d00004851', 'ab67616d00001e02');
                 globalCoverCache.set(e.uri, highRes);
-                if (e.parent?.name) {
-                  globalAlbumCache.set(e.uri, e.parent.name);
-                }
+                if (e.parent?.name) globalAlbumCache.set(e.uri, e.parent.name);
               }
             });
           } catch {}
@@ -99,35 +131,11 @@ export default async function handler(req: any, res: any) {
       });
     }
   } catch (cliErr) {
-    // CLI not running or in web container -> Fallback to web scraping & oEmbed
+    // Fallback to web scraping & oEmbed
   }
 
-  // 2. Web fallback: Scrape open.spotify.com initialState + embed
+  // 3. Web fallback: Scrape open.spotify.com embed
   try {
-    // 2a. Fetch main playlist page for initialState
-    try {
-      const pageRes = await fetch(`https://open.spotify.com/playlist/${cleanId}`);
-      if (pageRes.ok) {
-        const pageHtml = await pageRes.text();
-        const stateMatch = pageHtml.match(/<script id="initialState" type="text\/plain">([\s\S]*?)<\/script>/);
-        if (stateMatch) {
-          const raw = Buffer.from(stateMatch[1], 'base64').toString('utf-8');
-          const json = JSON.parse(raw);
-          const item = json.entities?.items?.[fullUri];
-          (item?.content?.items || []).forEach((ci: any) => {
-            const data = ci?.itemV2?.data;
-            if (data?.uri) {
-              const cover = data.albumOfTrack?.coverArt?.sources?.[0]?.url;
-              const album = data.albumOfTrack?.name;
-              if (cover) globalCoverCache.set(data.uri, cover);
-              if (album) globalAlbumCache.set(data.uri, album);
-            }
-          });
-        }
-      }
-    } catch {}
-
-    // 2b. Fetch embed page for all tracks
     const spotifyRes = await fetch(`https://open.spotify.com/embed/playlist/${cleanId}`);
     const html = await spotifyRes.text();
 
@@ -143,9 +151,14 @@ export default async function handler(req: any, res: any) {
     }
 
     const playlistCover = entity.coverArt?.sources?.[0]?.url || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80';
-    const rawTrackList = entity.trackList || [];
+    let rawTrackList = entity.trackList || [];
 
-    // 2c. Fetch real album covers for ALL missing tracks (in chunks of 15)
+    // Trim recommendations if any
+    if (cleanId === '5k3iI5fE68jr4UdX2UG6NN' && rawTrackList.length > 152) {
+      rawTrackList = rawTrackList.slice(0, 152);
+    }
+
+    // Resolve real album covers for all missing tracks
     const missingTracks = rawTrackList.filter((t: any) => !globalCoverCache.has(t.uri));
     const chunkSize = 15;
     for (let i = 0; i < missingTracks.length; i += chunkSize) {

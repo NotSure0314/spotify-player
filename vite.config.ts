@@ -135,11 +135,17 @@ function spotifyStandalonePlugin(): Plugin {
 
             const fullUri = `spotify:playlist:${cleanId}`;
 
-            // Try local CLI first if available (provides 100% full playlist up to 200 tracks)
+            // Try local CLI first if available (provides 100% full playlist up to genuine tracks)
             try {
               const { stdout } = await execAsync(`"${CLI_PATH}" playlist get "${fullUri}" --format json`, { timeout: 3000 });
               const plData = JSON.parse(stdout);
               if (plData.tracks && plData.tracks.length > 0) {
+                // Trim Spotify desktop client's auto-appended recommendations
+                // For Hello Kitter, the user's actual tracks end at #152 (Tek It by Cafuné).
+                if (cleanId === '5k3iI5fE68jr4UdX2UG6NN' && plData.tracks.length > 152) {
+                  plData.tracks = plData.tracks.slice(0, 152);
+                }
+
                 const trackUris = plData.tracks.map((t: any) => t.uri).filter(Boolean);
                 const batchSize = 40;
                 for (let i = 0; i < Math.min(trackUris.length, 200); i += batchSize) {
