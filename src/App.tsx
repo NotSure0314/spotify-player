@@ -40,8 +40,29 @@ export function App() {
   const [isQueueOpen, setIsQueueOpen] = useState<boolean>(false);
 
   const mainScrollRef = useRef<HTMLDivElement>(null);
+  const repeatModeRef = useRef<RepeatMode>(repeatMode);
+  repeatModeRef.current = repeatMode;
 
-  // 1. Initial Load: Sync User Playlists (either saved user, or default to Shreeji)
+  // 1. Audio Engine Callbacks Setup
+  useEffect(() => {
+    audioEngine.onTimeUpdate((current) => {
+      setProgress(current);
+    });
+
+    audioEngine.onTrackEnded(() => {
+      if (repeatModeRef.current === 'one') {
+        setProgress(0);
+        audioEngine.seek(0);
+        audioEngine.resume();
+      } else {
+        handleNext();
+      }
+    });
+
+    audioEngine.setVolume(volume);
+  }, []);
+
+  // 2. Initial Load: Sync User Playlists
   useEffect(() => {
     async function initUser() {
       const saved = getSavedUserProfile();
@@ -50,7 +71,7 @@ export function App() {
         const result = await fetchUserProfile(targetUser);
         if (result && result.playlists.length > 0) {
           setUserProfile(result.user);
-          // Fetch full track list for the first playlist
+          // Fetch full track list with real album covers for the first playlist
           const firstDetails = await fetchLivePlaylistDetails(result.playlists[0].id);
           const fullPlaylists = result.playlists.map((p, idx) =>
             idx === 0 && firstDetails
@@ -71,7 +92,7 @@ export function App() {
     initUser();
   }, []);
 
-  // 2. Sync User Handler (called from Sync Modal)
+  // 3. Sync User Handler (called from Sync Modal)
   const handleSyncUser = async (username: string): Promise<boolean> => {
     try {
       const result = await fetchUserProfile(username);
@@ -81,7 +102,7 @@ export function App() {
 
       setUserProfile(result.user);
 
-      // Load full tracks for the first playlist
+      // Load full tracks and real album covers for the first playlist
       const firstDetails = await fetchLivePlaylistDetails(result.playlists[0].id);
       const fullPlaylists = result.playlists.map((p, idx) =>
         idx === 0 && firstDetails
@@ -103,7 +124,7 @@ export function App() {
     }
   };
 
-  // 3. Debounced Live Catalog Search
+  // 4. Debounced Live Catalog Search
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -146,30 +167,6 @@ export function App() {
   // Queue tracks
   const queueTracks = currentTrack ? allTracks.filter(t => t.id !== currentTrack.id) : allTracks;
 
-  // 4. Audio Engine Sync & Progress Ticker
-  useEffect(() => {
-    let interval: number | null = null;
-    if (isPlaying && currentTrack) {
-      audioEngine.resume(currentTrack);
-
-      interval = window.setInterval(() => {
-        setProgress(prev => {
-          if (prev >= currentTrack.duration) {
-            handleTrackEnd();
-            return 0;
-          }
-          return prev + 1;
-        });
-      }, 1000);
-    } else {
-      audioEngine.pause();
-    }
-
-    return () => {
-      if (interval !== null) clearInterval(interval);
-    };
-  }, [isPlaying, currentTrack]);
-
   // Volume Engine Sync
   useEffect(() => {
     audioEngine.setVolume(volume);
@@ -185,8 +182,14 @@ export function App() {
         artwork: [{ src: currentTrack.coverUrl, sizes: '300x300', type: 'image/jpeg' }]
       });
 
-      navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
-      navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+      navigator.mediaSession.setActionHandler('play', () => {
+        setIsPlaying(true);
+        audioEngine.resume();
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        setIsPlaying(false);
+        audioEngine.pause();
+      });
       navigator.mediaSession.setActionHandler('previoustrack', handlePrevious);
       navigator.mediaSession.setActionHandler('nexttrack', handleNext);
     }
@@ -225,7 +228,15 @@ export function App() {
 
   // Playback Handlers
   const togglePlay = () => {
-    setIsPlaying(prev => !prev);
+    if (isPlaying) {
+      audioEngine.pause();
+      setIsPlaying(false);
+    } else {
+      if (currentTrack) {
+        audioEngine.resume();
+        setIsPlaying(true);
+      }
+    }
   };
 
   const handlePlayTrack = (track: Track) => {
@@ -262,19 +273,6 @@ export function App() {
     const currentIndex = currentTrack ? activeList.findIndex(t => t.id === currentTrack.id) : 0;
     const prevIndex = (currentIndex - 1 + activeList.length) % activeList.length;
     handlePlayTrack(activeList[prevIndex]);
-  };
-
-  const handleTrackEnd = () => {
-    if (repeatMode === 'one' && currentTrack) {
-      setProgress(0);
-      audioEngine.seek(0);
-      audioEngine.playTrack(currentTrack);
-    } else if (repeatMode === 'all') {
-      handleNext();
-    } else {
-      setIsPlaying(false);
-      setProgress(0);
-    }
   };
 
   const handleSeek = (seconds: number) => {

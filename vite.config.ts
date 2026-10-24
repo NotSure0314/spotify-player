@@ -97,6 +97,35 @@ function spotifyStandalonePlugin(): Plugin {
               cleanId = cleanId.replace('spotify:playlist:', '').replace(/[^a-zA-Z0-9]/g, '');
             }
 
+            const coverMap = new Map<string, string>();
+            const albumMap = new Map<string, string>();
+
+            // 1. Fetch main page initialState for real album covers
+            try {
+              const pageRes = await fetch(`https://open.spotify.com/playlist/${cleanId}`);
+              if (pageRes.ok) {
+                const pageHtml = await pageRes.text();
+                const stateMatch = pageHtml.match(/<script id="initialState" type="text\/plain">([\s\S]*?)<\/script>/);
+                if (stateMatch) {
+                  const raw = Buffer.from(stateMatch[1], 'base64').toString('utf-8');
+                  const json = JSON.parse(raw);
+                  const item = json.entities?.items?.[`spotify:playlist:${cleanId}`];
+                  (item?.content?.items || []).forEach((ci: any) => {
+                    const data = ci?.itemV2?.data;
+                    if (data?.uri) {
+                      const cover = data.albumOfTrack?.coverArt?.sources?.[0]?.url;
+                      const album = data.albumOfTrack?.name;
+                      if (cover) coverMap.set(data.uri, cover);
+                      if (album) albumMap.set(data.uri, album);
+                    }
+                  });
+                }
+              }
+            } catch (e) {
+              console.warn('InitialState extraction warning:', e);
+            }
+
+            // 2. Fetch embed page for all tracks
             const spotifyRes = await fetch(`https://open.spotify.com/embed/playlist/${cleanId}`);
             const html = await spotifyRes.text();
 
@@ -114,15 +143,34 @@ function spotifyStandalonePlugin(): Plugin {
             }
 
             const playlistCover = entity.coverArt?.sources?.[0]?.url || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80';
+            const rawTrackList = entity.trackList || [];
 
-            const tracks = (entity.trackList || []).map((t: any, index: number) => {
+            // 3. For any tracks missing individual album covers, fetch from oEmbed
+            const missingTracks = rawTrackList.filter((t: any) => !coverMap.has(t.uri));
+            if (missingTracks.length > 0) {
+              await Promise.all(missingTracks.slice(0, 30).map(async (t: any) => {
+                try {
+                  const trackId = t.uri.replace('spotify:track:', '');
+                  const r = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/track/${trackId}`);
+                  if (r.ok) {
+                    const d = await r.json();
+                    if (d.thumbnail_url) coverMap.set(t.uri, d.thumbnail_url);
+                  }
+                } catch {}
+              }));
+            }
+
+            const tracks = rawTrackList.map((t: any, index: number) => {
+              const trackCover = coverMap.get(t.uri) || playlistCover;
+              const trackAlbum = albumMap.get(t.uri) || entity.name || entity.title || 'Spotify Playlist';
+
               return {
                 id: t.uri || `spotify:track:${cleanId}-${index}`,
                 title: t.title || 'Unknown Title',
                 artist: (t.subtitle || 'Unknown Artist').replace(/\u00a0/g, ' '),
-                album: entity.name || entity.title || 'Spotify Playlist',
+                album: trackAlbum,
                 duration: Math.round((t.duration || 180000) / 1000),
-                coverUrl: playlistCover,
+                coverUrl: trackCover,
                 audioUrl: t.audioPreview?.url || undefined,
                 gradient: '#1e3a8a',
                 tempo: 80 + (index % 5) * 4
