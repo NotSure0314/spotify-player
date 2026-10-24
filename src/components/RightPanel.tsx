@@ -1,98 +1,731 @@
-import React from 'react';
-import { X, Mic2, ListMusic } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  X,
+  Mic2,
+  ListMusic,
+  MoreHorizontal,
+  Play,
+  CheckCircle2,
+  PlusCircle,
+  Share2,
+  ExternalLink,
+  ArrowLeft
+} from 'lucide-react';
 import { Track } from '../types';
+import { getArtistProfile } from '../utils/artistData';
 
 interface RightPanelProps {
   currentTrack: Track | null;
-  isLyricsOpen: boolean;
-  onCloseLyrics: () => void;
-  isQueueOpen: boolean;
-  onCloseQueue: () => void;
+  currentPlaylistTitle?: string;
+  isOpen: boolean;
+  activeTab: 'nowPlaying' | 'lyrics' | 'queue';
+  onClose: () => void;
+  onSelectTab: (tab: 'nowPlaying' | 'lyrics' | 'queue') => void;
   queue: Track[];
   progress: number;
   onPlayTrack: (track: Track) => void;
+  isLiked?: boolean;
+  onToggleLike?: () => void;
 }
 
 export const RightPanel: React.FC<RightPanelProps> = ({
   currentTrack,
-  isLyricsOpen,
-  onCloseLyrics,
-  isQueueOpen,
-  onCloseQueue,
+  currentPlaylistTitle,
+  isOpen,
+  activeTab,
+  onClose,
+  onSelectTab,
   queue,
   progress,
-  onPlayTrack
+  onPlayTrack,
+  isLiked = false,
+  onToggleLike
 }) => {
-  if (!isLyricsOpen && !isQueueOpen) {
+  const [isFollowing, setIsFollowing] = useState<boolean>(false);
+
+  if (!isOpen) {
     return null;
   }
 
+  const artistProfile = currentTrack
+    ? getArtistProfile(currentTrack.artist, currentTrack.title, currentTrack.coverUrl)
+    : null;
+
+  const nextTrack = queue && queue.length > 0 ? queue[0] : null;
+
+  // Determine active lyrics line preview
+  const defaultLyric1 = currentTrack?.lyrics && currentTrack.lyrics.length > 0
+    ? currentTrack.lyrics[Math.min(1, currentTrack.lyrics.length - 1)]
+    : 'I just wanna get high with my lover';
+  const defaultLyric2 = currentTrack?.lyrics && currentTrack.lyrics.length > 1
+    ? currentTrack.lyrics[Math.min(2, currentTrack.lyrics.length - 1)]
+    : 'Veo una muñeca cuando miro en el espejo';
+
   return (
-    <aside style={{
-      width: 'var(--right-panel-width)',
-      height: '100%',
-      backgroundColor: 'var(--bg-base)',
-      borderRadius: 'var(--panel-radius)',
-      margin: '8px 8px 8px 0',
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-      flexShrink: 0
-    }} className="animate-fade-in">
-      {/* Header */}
+    <aside
+      style={{
+        width: 'var(--right-panel-width, 380px)',
+        height: '100%',
+        backgroundColor: 'var(--background-base, #121212)',
+        borderRadius: 'var(--panel-radius, 8px)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        flexShrink: 0
+      }}
+      className="animate-fade-in"
+    >
+      {/* 1. Header */}
       <div style={{
-        padding: '16px 20px',
+        padding: '14px 16px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+        borderBottom: activeTab !== 'nowPlaying' ? '1px solid rgba(255, 255, 255, 0.08)' : 'none',
+        flexShrink: 0
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: 700 }}>
-          {isLyricsOpen ? (
-            <>
-              <Mic2 size={18} color="#1ed760" />
-              <span>Lyrics</span>
-            </>
-          ) : (
-            <>
-              <ListMusic size={18} color="#1ed760" />
-              <span>Queue</span>
-            </>
+        {activeTab === 'nowPlaying' ? (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: '#ffffff',
+            fontWeight: 700,
+            fontSize: '15px',
+            overflow: 'hidden'
+          }}>
+            {/* Spotify Sidebar / context icon */}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ flexShrink: 0, opacity: 0.85 }}>
+              <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h8V2h-8zm9.5 0v12h1.5a.5.5 0 0 0 .5-.5v-11a.5.5 0 0 0-.5-.5H12z" />
+            </svg>
+            <span style={{
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              cursor: 'pointer'
+            }}>
+              {currentPlaylistTitle || 'Now Playing'}
+            </span>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: 700 }}>
+            <button
+              onClick={() => onSelectTab('nowPlaying')}
+              title="Back to Now Playing"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-subdued)',
+                cursor: 'pointer',
+                display: 'flex',
+                padding: '2px',
+                marginRight: '4px'
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
+            >
+              <ArrowLeft size={16} />
+            </button>
+            {activeTab === 'lyrics' ? (
+              <>
+                <Mic2 size={18} color="#1ed760" />
+                <span>Lyrics</span>
+              </>
+            ) : (
+              <>
+                <ListMusic size={18} color="#1ed760" />
+                <span>Queue</span>
+              </>
+            )}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {activeTab === 'nowPlaying' && (
+            <button
+              title="More options"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-subdued)',
+                cursor: 'pointer',
+                display: 'flex',
+                padding: '4px'
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
+            >
+              <MoreHorizontal size={18} />
+            </button>
           )}
+          <button
+            onClick={onClose}
+            title="Close"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-subdued)',
+              cursor: 'pointer',
+              display: 'flex',
+              padding: '4px'
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
+          >
+            <X size={18} />
+          </button>
         </div>
-        <button
-          onClick={isLyricsOpen ? onCloseLyrics : onCloseQueue}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-subdued)',
-            cursor: 'pointer',
-            padding: '4px',
-            display: 'flex'
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
-        >
-          <X size={18} />
-        </button>
       </div>
 
-      {/* Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
-        {isLyricsOpen ? (
+      {/* 2. Scrollable Body Content */}
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px'
+      }}>
+        {/* VIEW A: NOW PLAYING VIEW */}
+        {activeTab === 'nowPlaying' && (
+          <>
+            {currentTrack ? (
+              <>
+                {/* Large Canvas Artwork */}
+                <div style={{
+                  position: 'relative',
+                  width: '100%',
+                  aspectRatio: '1 / 1',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+                }}>
+                  <img
+                    src={currentTrack.coverUrl}
+                    alt={currentTrack.title}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                  {/* Switch to video badge button */}
+                  <button
+                    style={{
+                      position: 'absolute',
+                      bottom: '12px',
+                      left: '12px',
+                      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                      borderRadius: '500px',
+                      padding: '6px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      color: '#ffffff',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                      backdropFilter: 'blur(8px)',
+                      transition: 'background-color 0.15s ease'
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.85)')}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.7)')}
+                  >
+                    <Play size={12} fill="#ffffff" color="#ffffff" />
+                    <span>Switch to video</span>
+                  </button>
+                </div>
+
+                {/* Title, Artist & Actions */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginTop: '-4px',
+                  marginBottom: '4px'
+                }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingRight: '8px' }}>
+                    <span style={{
+                      fontSize: '22px',
+                      fontWeight: 700,
+                      color: '#ffffff',
+                      letterSpacing: '-0.5px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {currentTrack.title}
+                    </span>
+                    <span style={{
+                      fontSize: '14px',
+                      color: 'var(--text-subdued)',
+                      fontWeight: 500,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      marginTop: '2px'
+                    }}>
+                      {currentTrack.artist}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                    <button
+                      title="Share"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-subdued)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        padding: '4px'
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
+                    >
+                      <Share2 size={18} />
+                    </button>
+                    <button
+                      onClick={onToggleLike}
+                      title={isLiked ? 'Remove from Your Library' : 'Save to Your Library'}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        padding: '4px'
+                      }}
+                    >
+                      {isLiked ? (
+                        <CheckCircle2 size={22} fill="#1ed760" color="#121212" />
+                      ) : (
+                        <PlusCircle size={22} color="var(--text-subdued)" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Lyrics Preview Card */}
+                <div
+                  onClick={() => onSelectTab('lyrics')}
+                  style={{
+                    backgroundColor: '#4a0b12',
+                    borderRadius: '12px',
+                    padding: '18px 20px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    transition: 'transform 0.15s ease, filter 0.15s ease'
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
+                  onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
+                >
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255, 255, 255, 0.8)' }}>
+                    Lyrics preview
+                  </span>
+                  <p style={{
+                    fontSize: '18px',
+                    fontWeight: 700,
+                    color: '#ffffff',
+                    lineHeight: 1.35,
+                    margin: '2px 0 0 0'
+                  }}>
+                    {defaultLyric1}
+                  </p>
+                  <p style={{
+                    fontSize: '15px',
+                    fontWeight: 600,
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    lineHeight: 1.35,
+                    margin: 0
+                  }}>
+                    {defaultLyric2}
+                  </p>
+                </div>
+
+                {/* Related Music Videos */}
+                {artistProfile && artistProfile.videos.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <span style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>
+                      Related music videos
+                    </span>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      {artistProfile.videos.map((vid, idx) => (
+                        <div
+                          key={idx}
+                          style={{ display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer' }}
+                        >
+                          <div style={{
+                            position: 'relative',
+                            width: '100%',
+                            aspectRatio: '16 / 9',
+                            borderRadius: '6px',
+                            overflow: 'hidden',
+                            backgroundColor: '#282828'
+                          }}>
+                            <img
+                              src={vid.image}
+                              alt={vid.title}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                            <div style={{
+                              position: 'absolute',
+                              top: '50%',
+                              left: '50%',
+                              transform: 'translate(-50%, -50%)',
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              <Play size={14} fill="#ffffff" color="#ffffff" style={{ marginLeft: '2px' }} />
+                            </div>
+                          </div>
+                          <span style={{
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: '#ffffff',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}>
+                            {vid.title}
+                          </span>
+                          <span style={{
+                            fontSize: '12px',
+                            color: 'var(--text-subdued)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}>
+                            {artistProfile.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* About the Artist Card */}
+                {artistProfile && (
+                  <div style={{
+                    backgroundColor: '#1f1f1f',
+                    borderRadius: '10px',
+                    overflow: 'hidden'
+                  }}>
+                    {/* Banner Photo */}
+                    <div style={{ position: 'relative', width: '100%', height: '180px' }}>
+                      <img
+                        src={artistProfile.image}
+                        alt={artistProfile.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                      <span style={{
+                        position: 'absolute',
+                        top: '12px',
+                        left: '14px',
+                        fontSize: '15px',
+                        fontWeight: 700,
+                        color: '#ffffff',
+                        textShadow: '0 2px 6px rgba(0,0,0,0.8)'
+                      }}>
+                        About the artist
+                      </span>
+                    </div>
+
+                    <div style={{ padding: '16px' }}>
+                      {/* Name & verified badge */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>
+                          {artistProfile.name}
+                        </span>
+                        <span style={{
+                          backgroundColor: '#3d91f4',
+                          color: '#ffffff',
+                          borderRadius: '50%',
+                          width: '15px',
+                          height: '15px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '10px',
+                          fontWeight: 900
+                        }}>
+                          ✓
+                        </span>
+                      </div>
+
+                      {/* Listener count & Follow button */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginTop: '6px',
+                        marginBottom: '12px'
+                      }}>
+                        <span style={{ fontSize: '13px', color: 'var(--text-subdued)' }}>
+                          {artistProfile.monthlyListeners}
+                        </span>
+                        <button
+                          onClick={() => setIsFollowing(prev => !prev)}
+                          style={{
+                            backgroundColor: 'transparent',
+                            border: isFollowing ? '1px solid #1ed760' : '1px solid rgba(255, 255, 255, 0.4)',
+                            color: isFollowing ? '#1ed760' : '#ffffff',
+                            borderRadius: '500px',
+                            padding: '5px 16px',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {isFollowing ? 'Following' : 'Follow'}
+                        </button>
+                      </div>
+
+                      {/* Bio */}
+                      <p style={{
+                        fontSize: '13px',
+                        color: 'var(--text-subdued)',
+                        lineHeight: 1.45,
+                        margin: 0
+                      }}>
+                        {artistProfile.bio}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Credits Card */}
+                {artistProfile && artistProfile.credits.length > 0 && (
+                  <div style={{
+                    backgroundColor: '#1f1f1f',
+                    borderRadius: '10px',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '14px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>Credits</span>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-subdued)', cursor: 'pointer' }}>
+                        Show all
+                      </span>
+                    </div>
+
+                    {artistProfile.credits.map((c, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            color: '#ffffff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            {c.name}
+                            {c.hasLink && <ExternalLink size={12} color="var(--text-subdued)" />}
+                          </span>
+                          <span style={{ fontSize: '12px', color: 'var(--text-subdued)', marginTop: '2px' }}>
+                            {c.role}
+                          </span>
+                        </div>
+                        {idx === 0 && (
+                          <button
+                            onClick={() => setIsFollowing(prev => !prev)}
+                            style={{
+                              backgroundColor: 'transparent',
+                              border: isFollowing ? '1px solid #1ed760' : '1px solid rgba(255, 255, 255, 0.4)',
+                              color: isFollowing ? '#1ed760' : '#ffffff',
+                              borderRadius: '500px',
+                              padding: '4px 14px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {isFollowing ? 'Following' : 'Follow'}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* On Tour Card */}
+                {artistProfile && artistProfile.tour.length > 0 && (
+                  <div style={{
+                    backgroundColor: '#1f1f1f',
+                    borderRadius: '10px',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '14px'
+                  }}>
+                    <span style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>On tour</span>
+                    {artistProfile.tour.map((t, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        {/* Date badge */}
+                        <div style={{
+                          backgroundColor: '#121212',
+                          borderRadius: '6px',
+                          padding: '6px 12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          minWidth: '50px'
+                        }}>
+                          <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-subdued)', textTransform: 'uppercase' }}>
+                            {t.month}
+                          </span>
+                          <span style={{ fontSize: '18px', fontWeight: 800, color: '#ffffff' }}>
+                            {t.day}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                          <span style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>
+                            {t.city}
+                          </span>
+                          <span style={{
+                            fontSize: '12px',
+                            color: 'var(--text-subdued)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}>
+                            {t.event}
+                          </span>
+                          <span style={{
+                            fontSize: '11px',
+                            color: 'var(--text-subdued)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            marginTop: '1px'
+                          }}>
+                            {t.venue}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Merch Card */}
+                {artistProfile && artistProfile.merch.length > 0 && (
+                  <div style={{
+                    backgroundColor: '#1f1f1f',
+                    borderRadius: '10px',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '14px'
+                  }}>
+                    <span style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>Merch</span>
+                    {artistProfile.merch.map((m, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }}>
+                        <img
+                          src={m.image}
+                          alt={m.name}
+                          style={{ width: '48px', height: '48px', borderRadius: '4px', objectFit: 'cover' }}
+                        />
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
+                          {m.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Next in Queue Card */}
+                {nextTrack && (
+                  <div style={{
+                    backgroundColor: '#1f1f1f',
+                    borderRadius: '10px',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>Next in queue</span>
+                      <span
+                        onClick={() => onSelectTab('queue')}
+                        style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-subdued)', cursor: 'pointer' }}
+                      >
+                        Open queue
+                      </span>
+                    </div>
+                    <div
+                      onClick={() => onPlayTrack(nextTrack)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      <img
+                        src={nextTrack.coverUrl}
+                        alt={nextTrack.title}
+                        style={{ width: '44px', height: '44px', borderRadius: '4px', objectFit: 'cover' }}
+                      />
+                      <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <span style={{
+                          fontSize: '14px',
+                          fontWeight: 600,
+                          color: '#ffffff',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          {nextTrack.title}
+                        </span>
+                        <span style={{
+                          fontSize: '12px',
+                          color: 'var(--text-subdued)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          {nextTrack.artist}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--text-subdued)' }}>
+                <p style={{ fontSize: '14px' }}>Play a track to view song information and artist details.</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* VIEW B: FULL LYRICS */}
+        {activeTab === 'lyrics' && (
           <div>
             {currentTrack?.lyrics && currentTrack.lyrics.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {currentTrack.lyrics.map((line, idx) => {
-                  // highlight based on progress ratio
-                  const activeLineIndex = Math.floor((progress / (currentTrack.duration || 1)) * currentTrack.lyrics!.length);
+                  const activeLineIndex = Math.floor(
+                    (progress / (currentTrack.duration || 1)) * currentTrack.lyrics!.length
+                  );
                   const isCurrentLine = idx === activeLineIndex;
 
                   return (
                     <p
                       key={idx}
                       style={{
-                        fontSize: isCurrentLine ? '20px' : '17px',
+                        fontSize: isCurrentLine ? '22px' : '17px',
                         fontWeight: 700,
                         color: isCurrentLine ? '#ffffff' : 'rgba(255, 255, 255, 0.4)',
                         lineHeight: 1.4,
@@ -111,7 +744,10 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               </p>
             )}
           </div>
-        ) : (
+        )}
+
+        {/* VIEW C: FULL QUEUE */}
+        {activeTab === 'queue' && (
           <div>
             <span style={{ fontSize: '14px', fontWeight: 700, marginBottom: '12px', display: 'block' }}>
               Now Playing
@@ -132,16 +768,25 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   style={{ width: '44px', height: '44px', borderRadius: '4px', objectFit: 'cover' }}
                 />
                 <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#1ed760', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <span style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: '#1ed760',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
                     {currentTrack.title}
                   </span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-subdued)' }}>{currentTrack.artist}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-subdued)' }}>
+                    {currentTrack.artist}
+                  </span>
                 </div>
               </div>
             )}
 
             <span style={{ fontSize: '14px', fontWeight: 700, marginBottom: '12px', display: 'block' }}>
-              Next from Playlist
+              Next in Queue
             </span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {queue.map(track => (
@@ -151,24 +796,40 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '10px',
-                    padding: '6px 8px',
+                    gap: '12px',
+                    padding: '8px',
                     borderRadius: '4px',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    transition: 'background-color 0.15s ease'
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)')}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)')}
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
                   <img
                     src={track.coverUrl}
                     alt={track.title}
-                    style={{ width: '38px', height: '38px', borderRadius: '4px', objectFit: 'cover' }}
+                    style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }}
                   />
                   <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <span style={{
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: '#ffffff',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
                       {track.title}
                     </span>
-                    <span style={{ fontSize: '11px', color: 'var(--text-subdued)' }}>{track.artist}</span>
+                    <span style={{
+                      fontSize: '11px',
+                      color: 'var(--text-subdued)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {track.artist}
+                    </span>
                   </div>
                 </div>
               ))}

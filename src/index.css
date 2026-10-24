@@ -19,6 +19,7 @@
   --card-radius: 6px;
   --player-height: 72px;
   --top-bar-height: 64px;
+  --right-panel-width: 380px;
   accent-color: var(--accent-green);
 }
 

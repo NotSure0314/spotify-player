@@ -36,6 +36,8 @@ interface NowPlayingBarProps {
   onCycleRepeat: () => void;
   isLiked: boolean;
   onToggleLike: () => void;
+  isNowPlayingViewOpen: boolean;
+  onToggleNowPlayingView: () => void;
   isLyricsOpen: boolean;
   onToggleLyrics: () => void;
   isQueueOpen: boolean;
@@ -65,6 +67,8 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
   onCycleRepeat,
   isLiked,
   onToggleLike,
+  isNowPlayingViewOpen,
+  onToggleNowPlayingView,
   isLyricsOpen,
   onToggleLyrics,
   isQueueOpen,
@@ -389,6 +393,31 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
 
       {/* 3. Right: Device, Volume & View Controls */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '14px', position: 'relative' }}>
+        {/* Now Playing View */}
+        <button
+          onClick={onToggleNowPlayingView}
+          title="Now playing view"
+          style={{
+            background: 'none',
+            border: 'none',
+            color: isNowPlayingViewOpen ? '#1ed760' : 'var(--text-subdued)',
+            cursor: 'pointer',
+            padding: 0,
+            display: 'flex',
+            alignItems: 'center'
+          }}
+          onMouseEnter={e => {
+            if (!isNowPlayingViewOpen) e.currentTarget.style.color = '#ffffff';
+          }}
+          onMouseLeave={e => {
+            if (!isNowPlayingViewOpen) e.currentTarget.style.color = 'var(--text-subdued)';
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h8V2h-8zm9.5 0v12h1.5a.5.5 0 0 0 .5-.5v-11a.5.5 0 0 0-.5-.5H12z"/>
+          </svg>
+        </button>
+
         {/* Lyrics */}
         <button
           onClick={onToggleLyrics}

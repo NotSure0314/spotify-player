@@ -41,9 +41,9 @@ export function App() {
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('all');
   const [likedTrackIds, setLikedTrackIds] = useState<Set<string>>(() => getSavedLikedTrackIds());
 
-  // Auxiliary panels
-  const [isLyricsOpen, setIsLyricsOpen] = useState<boolean>(false);
-  const [isQueueOpen, setIsQueueOpen] = useState<boolean>(false);
+  // Auxiliary panels (Now Playing View, Lyrics, Queue)
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(true);
+  const [rightPanelTab, setRightPanelTab] = useState<'nowPlaying' | 'lyrics' | 'queue'>('nowPlaying');
 
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const repeatModeRef = useRef<RepeatMode>(repeatMode);
@@ -311,6 +311,8 @@ export function App() {
     setProgress(0);
     setTrackDuration(track.duration || 180);
     setIsPlaying(true);
+    setIsRightPanelOpen(true);
+    setRightPanelTab('nowPlaying');
     audioEngine.playTrack(track);
   };
 
@@ -470,16 +472,21 @@ export function App() {
           />
         </main>
 
-        {/* Right Panel (Lyrics / Queue) */}
+        {/* Right Panel (Now Playing View / Lyrics / Queue) */}
         <RightPanel
           currentTrack={currentTrack}
-          isLyricsOpen={isLyricsOpen}
-          onCloseLyrics={() => setIsLyricsOpen(false)}
-          isQueueOpen={isQueueOpen}
-          onCloseQueue={() => setIsQueueOpen(false)}
+          currentPlaylistTitle={selectedPlaylist?.title || 'Now Playing'}
+          isOpen={isRightPanelOpen}
+          activeTab={rightPanelTab}
+          onClose={() => setIsRightPanelOpen(false)}
+          onSelectTab={tab => setRightPanelTab(tab)}
           queue={queueTracks}
           progress={progress}
           onPlayTrack={handlePlayTrack}
+          isLiked={currentTrack ? likedTrackIds.has(currentTrack.id) : false}
+          onToggleLike={() => {
+            if (currentTrack) toggleLikeTrack(currentTrack.id);
+          }}
         />
       </div>
 
@@ -503,15 +510,32 @@ export function App() {
         onToggleLike={() => {
           if (currentTrack) toggleLikeTrack(currentTrack.id);
         }}
-        isLyricsOpen={isLyricsOpen}
-        onToggleLyrics={() => {
-          setIsLyricsOpen(prev => !prev);
-          setIsQueueOpen(false);
+        isNowPlayingViewOpen={isRightPanelOpen && rightPanelTab === 'nowPlaying'}
+        onToggleNowPlayingView={() => {
+          if (isRightPanelOpen && rightPanelTab === 'nowPlaying') {
+            setIsRightPanelOpen(false);
+          } else {
+            setIsRightPanelOpen(true);
+            setRightPanelTab('nowPlaying');
+          }
         }}
-        isQueueOpen={isQueueOpen}
+        isLyricsOpen={isRightPanelOpen && rightPanelTab === 'lyrics'}
+        onToggleLyrics={() => {
+          if (isRightPanelOpen && rightPanelTab === 'lyrics') {
+            setIsRightPanelOpen(false);
+          } else {
+            setIsRightPanelOpen(true);
+            setRightPanelTab('lyrics');
+          }
+        }}
+        isQueueOpen={isRightPanelOpen && rightPanelTab === 'queue'}
         onToggleQueue={() => {
-          setIsQueueOpen(prev => !prev);
-          setIsLyricsOpen(false);
+          if (isRightPanelOpen && rightPanelTab === 'queue') {
+            setIsRightPanelOpen(false);
+          } else {
+            setIsRightPanelOpen(true);
+            setRightPanelTab('queue');
+          }
         }}
       />
 
