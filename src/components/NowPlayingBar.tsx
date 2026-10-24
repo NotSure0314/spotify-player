@@ -26,6 +26,7 @@ interface NowPlayingBarProps {
   onNext: () => void;
   onPrevious: () => void;
   progress: number;
+  duration?: number;
   onSeek: (seconds: number) => void;
   volume: number;
   onVolumeChange: (vol: number) => void;
@@ -54,6 +55,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
   onNext,
   onPrevious,
   progress,
+  duration,
   onSeek,
   volume,
   onVolumeChange,
@@ -80,8 +82,8 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
     }
   };
 
-  const duration = currentTrack ? currentTrack.duration : 0;
-  const progressPercent = duration > 0 ? (progress / duration) * 100 : 0;
+  const effectiveDuration = (duration && duration > 0) ? duration : (currentTrack ? currentTrack.duration : 180);
+  const progressPercent = Math.min(100, Math.max(0, effectiveDuration > 0 ? (progress / effectiveDuration) * 100 : 0));
   const volumePercent = volume * 100;
 
   return (
@@ -368,8 +370,8 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
               type="range"
               className="spotify-slider"
               min={0}
-              max={duration || 100}
-              value={progress}
+              max={effectiveDuration || 100}
+              value={Math.min(progress, effectiveDuration)}
               onChange={e => onSeek(Number(e.target.value))}
               style={{
                 zIndex: 2,
@@ -380,7 +382,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
           </div>
 
           <span style={{ fontSize: '11px', color: 'var(--text-subdued)', minWidth: '32px' }}>
-            {formatTime(duration)}
+            {formatTime(effectiveDuration)}
           </span>
         </div>
       </div>

@@ -232,15 +232,29 @@ export const MainContent: React.FC<MainContentProps> = ({
       );
     }
 
-    const totalDurationSeconds = playlist.tracks.reduce((acc, t) => acc + t.duration, 0);
-    const totalMinutes = Math.floor(totalDurationSeconds / 60);
+    const totalDurationSeconds = playlist.tracks.reduce((acc, t) => acc + (t.duration || 180), 0);
+    const hours = Math.floor(totalDurationSeconds / 3600);
+    const minutes = Math.floor((totalDurationSeconds % 3600) / 60);
+    const durationText = hours > 0 ? `${hours} hr ${minutes} min` : `${minutes} min`;
+
+    const getDynamicHeaderColor = () => {
+      if (isLikedView) return '#450af5';
+      const titleLower = (playlist.title || '').toLowerCase();
+      if (titleLower.includes('kitter') || titleLower.includes('hello')) return '#b91c1c'; // Vibrant Red matching user screenshot
+      if (titleLower.includes('kanye')) return '#831843'; // Crimson Plum
+      if (titleLower.includes('white girl')) return '#db2777'; // Electric Hot Pink
+      if (titleLower.includes('gym')) return '#1e3a8a'; // Deep Navy
+      return playlist.gradient || '#1e3a8a';
+    };
+
+    const headerColor = getDynamicHeaderColor();
 
     return (
       <div className="animate-fade-in" style={{ paddingBottom: '32px' }}>
         {/* Dynamic Gradient Hero Header */}
         <div style={{
           padding: '40px 32px 24px 32px',
-          background: `linear-gradient(to bottom, ${playlist.gradient || '#1e3a8a'} 0%, rgba(18, 18, 18, 0.95) 100%)`,
+          background: `linear-gradient(to bottom, ${headerColor} 0%, rgba(18, 18, 18, 0.95) 100%)`,
           display: 'flex',
           alignItems: 'flex-end',
           gap: '24px',
@@ -291,11 +305,14 @@ export const MainContent: React.FC<MainContentProps> = ({
             <p style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.7)', marginTop: '4px' }}>
               {playlist.description}
             </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 600, marginTop: '4px' }}>
-              <span>Spotify</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 600, marginTop: '6px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '16px', fontWeight: 300 }}>+</span>
+                <span>Shreeji</span>
+              </span>
               <span>•</span>
               <span>{playlist.tracks.length} songs,</span>
-              <span style={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 400 }}>about {totalMinutes} min</span>
+              <span style={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 400 }}>{durationText}</span>
             </div>
           </div>
         </div>

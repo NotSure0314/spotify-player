@@ -31,28 +31,28 @@ export default async function handler(req: any, res: any) {
     const userKey = Object.keys(json.entities?.items || {})[0];
     const user = json.entities?.items?.[userKey];
 
-    const gradients = [
-      '#4c1d95',
-      '#1e3a8a',
-      '#78350f',
-      '#14532d',
-      '#831843',
-      '#701a75',
-      '#064e3b',
-      '#854d0e'
-    ];
+    const getPlaylistPresetGradient = (title: string, idx: number) => {
+      const t = (title || '').toLowerCase();
+      if (t.includes('kitter') || t.includes('hello')) return '#b91c1c'; // Vibrant Red matching user screenshot
+      if (t.includes('kanye')) return '#831843'; // Crimson Plum
+      if (t.includes('white girl')) return '#db2777'; // Electric Hot Pink
+      if (t.includes('gym')) return '#1e3a8a'; // Deep Navy
+      const fallback = ['#4c1d95', '#1e3a8a', '#78350f', '#14532d', '#831843', '#701a75'];
+      return fallback[idx % fallback.length];
+    };
 
     const rawItems = user?.publicPlaylistsV2?.items || user?.publicPlaylists?.items || [];
     const playlists = rawItems.map((p: any, idx: number) => {
       const uri = p.data?.uri || p._uri || `spotify:playlist:${idx}`;
       const id = uri.replace('spotify:playlist:', '');
+      const title = p.data?.name || 'Untitled Playlist';
       return {
         id: uri,
         playlistId: id,
-        title: p.data?.name || 'Untitled Playlist',
+        title,
         description: `Imported from ${user?.name || cleanId}'s Spotify library`,
         coverUrl: p.data?.images?.items?.[0]?.sources?.[0]?.url || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80',
-        gradient: gradients[idx % gradients.length],
+        gradient: getPlaylistPresetGradient(title, idx),
         followers: p.data?.followers || 0,
         tracks: []
       };

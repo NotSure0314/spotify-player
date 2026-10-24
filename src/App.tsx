@@ -30,6 +30,7 @@ export function App() {
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
+  const [trackDuration, setTrackDuration] = useState<number>(0);
   const [volume, setVolume] = useState<number>(0.75);
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('all');
@@ -45,8 +46,11 @@ export function App() {
 
   // 1. Audio Engine Callbacks Setup
   useEffect(() => {
-    audioEngine.onTimeUpdate((current) => {
+    audioEngine.onTimeUpdate((current, duration) => {
       setProgress(current);
+      if (duration > 0) {
+        setTrackDuration(duration);
+      }
     });
 
     audioEngine.onTrackEnded(() => {
@@ -242,6 +246,7 @@ export function App() {
   const handlePlayTrack = (track: Track) => {
     setCurrentTrack(track);
     setProgress(0);
+    setTrackDuration(track.duration || 180);
     setIsPlaying(true);
     audioEngine.playTrack(track);
   };
@@ -413,6 +418,7 @@ export function App() {
         onNext={handleNext}
         onPrevious={handlePrevious}
         progress={progress}
+        duration={trackDuration}
         onSeek={handleSeek}
         volume={volume}
         onVolumeChange={setVolume}

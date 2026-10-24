@@ -11,6 +11,16 @@ const globalCoverCache = new Map<string, string>();
 const globalAlbumCache = new Map<string, string>();
 const ytCache = new Map<string, string>();
 
+function getPlaylistPresetGradient(title: string, idx: number = 0): string {
+  const t = (title || '').toLowerCase();
+  if (t.includes('kitter') || t.includes('hello')) return '#b91c1c'; // Vibrant Red matching user screenshot
+  if (t.includes('kanye')) return '#831843'; // Crimson Plum
+  if (t.includes('white girl')) return '#db2777'; // Electric Hot Pink
+  if (t.includes('gym')) return '#1e3a8a'; // Deep Navy
+  const fallback = ['#4c1d95', '#1e3a8a', '#78350f', '#14532d', '#831843', '#701a75'];
+  return fallback[idx % fallback.length];
+}
+
 function spotifyStandalonePlugin(): Plugin {
   return {
     name: 'spotify-standalone-plugin',
@@ -81,28 +91,18 @@ function spotifyStandalonePlugin(): Plugin {
             const userKey = Object.keys(json.entities?.items || {})[0];
             const user = json.entities?.items?.[userKey];
 
-            const gradients = [
-              '#4c1d95',
-              '#1e3a8a',
-              '#78350f',
-              '#14532d',
-              '#831843',
-              '#701a75',
-              '#064e3b',
-              '#854d0e'
-            ];
-
             const rawItems = user?.publicPlaylistsV2?.items || user?.publicPlaylists?.items || [];
             const playlists = rawItems.map((p: any, idx: number) => {
               const uri = p.data?.uri || p._uri || `spotify:playlist:${idx}`;
               const id = uri.replace('spotify:playlist:', '');
+              const title = p.data?.name || 'Untitled Playlist';
               return {
                 id: uri,
                 playlistId: id,
-                title: p.data?.name || 'Untitled Playlist',
+                title,
                 description: `Imported from ${user?.name || cleanId}'s Spotify library`,
                 coverUrl: p.data?.images?.items?.[0]?.sources?.[0]?.url || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80',
-                gradient: gradients[idx % gradients.length],
+                gradient: getPlaylistPresetGradient(title, idx),
                 followers: p.data?.followers || 0,
                 tracks: []
               };
@@ -198,7 +198,7 @@ function spotifyStandalonePlugin(): Plugin {
                   title: plData.name || 'Untitled Playlist',
                   description: plData.description || 'Spotify Playlist',
                   coverUrl: playlistCover || tracks[0]?.coverUrl || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80',
-                  gradient: '#4c1d95',
+                  gradient: getPlaylistPresetGradient(plData.name || '', 0),
                   tracks
                 }));
               }
@@ -286,7 +286,7 @@ function spotifyStandalonePlugin(): Plugin {
               title: entity.name || entity.title || 'Untitled Playlist',
               description: entity.subtitle ? `By ${entity.subtitle}` : 'Spotify Playlist',
               coverUrl: playlistCover,
-              gradient: '#4c1d95',
+              gradient: getPlaylistPresetGradient(entity.name || entity.title || '', 0),
               tracks
             }));
           } else if (pathname === '/api/search') {
