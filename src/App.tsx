@@ -49,8 +49,28 @@ export function App() {
   } | null>(null);
 
   // Auxiliary panels (Now Playing View, Lyrics, Queue)
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(true);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(() => {
+    return typeof window !== 'undefined' ? window.innerWidth >= 850 : true;
+  });
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    return typeof window !== 'undefined' ? window.innerWidth < 900 : false;
+  });
   const [rightPanelTab, setRightPanelTab] = useState<'nowPlaying' | 'lyrics' | 'queue'>('nowPlaying');
+
+  // Responsive window resize observer
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      if (width < 900) {
+        setIsSidebarCollapsed(true);
+      }
+      if (width < 800) {
+        setIsRightPanelOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const mainScrollRef = useRef<HTMLDivElement>(null);
   
@@ -731,11 +751,14 @@ export function App() {
           onImportPlaylist={handleImportPlaylist}
           onOpenSyncModal={() => setIsSyncModalOpen(true)}
           onPlayPlaylist={pl => handlePlayPlaylistOrAlbum(pl, true)}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
         />
 
         {/* Center Main Viewport */}
         <main
           ref={mainScrollRef}
+          className="main-viewport"
           style={{
             flex: 1,
             height: '100%',
@@ -744,7 +767,8 @@ export function App() {
             overflowY: 'auto',
             position: 'relative',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            minWidth: 0
           }}
         >
           <MainContent

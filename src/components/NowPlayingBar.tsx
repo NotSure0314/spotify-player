@@ -91,17 +91,20 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
   const volumePercent = volume * 100;
 
   return (
-    <footer style={{
-      height: 'var(--player-height)',
-      backgroundColor: '#000000',
-      display: 'grid',
-      gridTemplateColumns: '30% 40% 30%',
-      alignItems: 'center',
-      padding: '0 16px',
-      zIndex: 100,
-      userSelect: 'none',
-      flexShrink: 0
-    }}>
+    <footer
+      className="now-playing-bar-root"
+      style={{
+        height: 'var(--player-height)',
+        backgroundColor: '#000000',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(180px, 30%) 1fr minmax(180px, 30%)',
+        alignItems: 'center',
+        padding: '0 16px',
+        zIndex: 100,
+        userSelect: 'none',
+        flexShrink: 0
+      }}
+    >
       {/* 1. Left: Track Info */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
         {currentTrack ? (
@@ -177,6 +180,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             </button>
 
             <button
+              className="player-pip-btn"
               title="Picture in picture"
               style={{
                 background: 'none',
@@ -461,7 +465,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
         </button>
 
         {/* Connect to a Device */}
-        <div style={{ position: 'relative' }}>
+        <div className="player-devices-btn" style={{ position: 'relative' }}>
           <button
             onClick={() => setDevicePopup(!devicePopup)}
             title="Connect to a device"
@@ -513,7 +517,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
         </div>
 
         {/* Volume Control */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '120px' }}>
+        <div className="player-volume-control" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             onClick={toggleMute}
             title={volume === 0 ? 'Unmute' : 'Mute'}
@@ -532,9 +536,9 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
           </button>
 
           <div
-            className="scrubber-wrap"
+            className="scrubber-wrap volume-slider-wrap"
             style={{
-              flex: 1,
+              width: '90px',
               position: 'relative',
               display: 'flex',
               alignItems: 'center',
@@ -581,6 +585,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
 
         {/* Fullscreen Icon */}
         <button
+          className="player-fullscreen-btn"
           title="Full screen"
           style={{
             background: 'none',

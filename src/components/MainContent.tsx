@@ -648,55 +648,39 @@ export const MainContent: React.FC<MainContentProps> = ({
         </div>
 
         {/* Dynamic Gradient Hero Header */}
-        <div style={{
-          padding: '40px 32px 24px 32px',
-          background: `linear-gradient(to bottom, ${headerColor} 0%, rgba(18, 18, 18, 0.95) 100%)`,
-          transition: 'background 0.3s ease',
-          display: 'flex',
-          alignItems: 'flex-end',
-          gap: '24px',
-          minHeight: '300px'
-        }}>
+        <div
+          className="playlist-header-wrap"
+          style={{
+            background: `linear-gradient(to bottom, ${headerColor} 0%, rgba(18, 18, 18, 0.95) 100%)`,
+            transition: 'background 0.3s ease',
+            minHeight: '260px'
+          }}
+        >
           {isLikedView ? (
-            <div style={{
-              width: '232px',
-              height: '232px',
-              borderRadius: '6px',
-              background: 'linear-gradient(135deg, #450af5, #8e8ee5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 60px rgba(0,0,0,0.5)',
-              flexShrink: 0
-            }}>
-              <Heart size={84} fill="#ffffff" color="#ffffff" />
+            <div
+              className="playlist-header-cover"
+              style={{
+                background: 'linear-gradient(135deg, #450af5, #8e8ee5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Heart size={64} fill="#ffffff" color="#ffffff" />
             </div>
           ) : (
             <img
               src={playlist.coverUrl}
               alt={playlist.title}
-              style={{
-                width: '232px',
-                height: '232px',
-                borderRadius: '6px',
-                objectFit: 'cover',
-                boxShadow: '0 4px 60px rgba(0,0,0,0.5)',
-                flexShrink: 0
-              }}
+              className="playlist-header-cover"
             />
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0, overflow: 'hidden' }}>
             <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Playlist
             </span>
-            <h1 style={{
-              fontSize: playlist.title.length > 25 ? '48px' : '68px',
-              fontWeight: 900,
-              letterSpacing: '-2px',
-              margin: '2px 0',
-              lineHeight: 1.05
-            }}>
+            <h1 className="playlist-header-title">
               {playlist.title}
             </h1>
             <p style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.7)', marginTop: '4px' }}>
@@ -820,26 +804,26 @@ export const MainContent: React.FC<MainContentProps> = ({
         {/* Track Table */}
         <div style={{ padding: '0 32px' }}>
           {/* Table Header */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '40px 4fr 3fr 2fr 100px',
-            padding: '8px 16px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            fontSize: '12px',
-            color: 'var(--text-subdued)',
-            fontWeight: 600,
-            letterSpacing: '0.5px',
-            textTransform: 'uppercase',
-            marginBottom: '8px',
-            position: 'sticky',
-            top: '64px',
-            zIndex: 25,
-            backgroundColor: 'var(--background-base)'
-          }}>
+          <div
+            className="track-table-header"
+            style={{
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              fontSize: '12px',
+              color: 'var(--text-subdued)',
+              fontWeight: 600,
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+              position: 'sticky',
+              top: '64px',
+              zIndex: 25,
+              backgroundColor: 'var(--background-base)'
+            }}
+          >
             <span style={{ textAlign: 'center' }}>#</span>
             <span>Title</span>
-            <span>Album</span>
-            <span>Date added</span>
+            <span className="track-col-album">Album</span>
+            <span className="track-col-date">Date added</span>
             <div style={{ display: 'flex', justifyContent: 'flex-end', paddingRight: '8px' }}>
               <Clock size={16} />
             </div>
@@ -861,12 +845,11 @@ export const MainContent: React.FC<MainContentProps> = ({
               return (
                 <div
                   key={`${track.id}-${index}`}
+                  className="track-table-row"
                   onClick={() => onPlayTrack(track, playlist.tracks, { id: playlist.id, title: playlist.title })}
                   onMouseEnter={() => setHoveredTrackIndex(index)}
                   onMouseLeave={() => setHoveredTrackIndex(null)}
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: '40px 4fr 3fr 2fr 100px',
                     alignItems: 'center',
                     padding: '8px 16px',
                     borderRadius: '4px',
@@ -929,7 +912,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   </div>
 
                   {/* Album */}
-                  <span style={{
+                  <span className="track-col-album" style={{
                     fontSize: '13px',
                     color: 'var(--text-subdued)',
                     whiteSpace: 'nowrap',
@@ -940,7 +923,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   </span>
 
                   {/* Date Added */}
-                  <span style={{
+                  <span className="track-col-date" style={{
                     fontSize: '13px',
                     color: 'var(--text-subdued)',
                     whiteSpace: 'nowrap',
@@ -1095,13 +1078,8 @@ export const MainContent: React.FC<MainContentProps> = ({
         })}
       </div>
 
-      {/* 2x4 Quick Access Grid (8 items) */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '12px',
-        marginBottom: '40px'
-      }}>
+      {/* Responsive Quick Access Grid (2 columns on compact/medium, 4 columns on wide) */}
+      <div className="quick-access-grid">
         {QUICK_ACCESS_ITEMS.map((item, index) => {
           // If there is an existing loaded playlist matching title, link to it
           const matched = playlists.find(p => p.title.toLowerCase().trim() === item.title.toLowerCase().trim());
@@ -1121,7 +1099,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                 cursor: 'pointer',
                 position: 'relative',
                 transition: 'background-color 0.2s ease',
-                height: '64px'
+                height: 'clamp(56px, 5.2vw, 64px)'
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.16)';
@@ -1143,12 +1121,12 @@ export const MainContent: React.FC<MainContentProps> = ({
               <img
                 src={displayImage}
                 alt={displayTitle}
-                style={{ width: '64px', height: '64px', objectFit: 'cover', flexShrink: 0 }}
+                style={{ width: 'clamp(56px, 5.2vw, 64px)', height: 'clamp(56px, 5.2vw, 64px)', objectFit: 'cover', flexShrink: 0 }}
               />
               <span style={{
-                fontSize: '14px',
+                fontSize: 'clamp(12px, 1.1vw, 14px)',
                 fontWeight: 700,
-                padding: '0 16px',
+                padding: '0 clamp(8px, 1.2vw, 16px)',
                 flex: 1,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -1166,8 +1144,8 @@ export const MainContent: React.FC<MainContentProps> = ({
                   handleHomeCardClick({ ...item, title: displayTitle, image: displayImage }, true);
                 }}
                 style={{
-                  width: '44px',
-                  height: '44px',
+                  width: '40px',
+                  height: '40px',
                   borderRadius: '50%',
                   backgroundColor: '#1ed760',
                   display: 'flex',
@@ -1183,7 +1161,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                 onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
                 onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
               >
-                <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                <Play size={18} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
               </div>
             </div>
           );
@@ -1193,11 +1171,7 @@ export const MainContent: React.FC<MainContentProps> = ({
       {/* SECTION 1: Made For Shreeji (Daily Mixes & Radar) */}
       <div style={{ marginBottom: '40px' }}>
         {renderSectionHeader(displayName, 'Made For')}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-          gap: '18px'
-        }}>
+        <div className="spotify-card-grid">
           {MADE_FOR_YOU_ITEMS.map(item => (
             <div
               key={item.id}
@@ -1341,11 +1315,7 @@ export const MainContent: React.FC<MainContentProps> = ({
       {/* SECTION 2: Jump back in */}
       <div style={{ marginBottom: '40px' }}>
         {renderSectionHeader('Jump back in')}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-          gap: '18px'
-        }}>
+        <div className="spotify-card-grid">
           {JUMP_BACK_IN_ITEMS.map(item => (
             <div
               key={item.id}
@@ -1461,11 +1431,7 @@ export const MainContent: React.FC<MainContentProps> = ({
       {/* SECTION 3: Recents */}
       <div style={{ marginBottom: '40px' }}>
         {renderSectionHeader('Recents')}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-          gap: '18px'
-        }}>
+        <div className="spotify-card-grid">
           {RECENTS_ITEMS.map(item => (
             <div
               key={item.id}
@@ -1599,11 +1565,7 @@ export const MainContent: React.FC<MainContentProps> = ({
       {/* SECTION 4: Recommended Stations (Spotify Radio style) */}
       <div style={{ marginBottom: '40px' }}>
         {renderSectionHeader('Recommended Stations', 'Non-stop music based on your favorite songs and artists.')}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-          gap: '18px'
-        }}>
+        <div className="spotify-card-grid">
           {RECOMMENDED_STATIONS.map(item => (
             <div
               key={item.id}
@@ -1769,11 +1731,7 @@ export const MainContent: React.FC<MainContentProps> = ({
       {/* SECTION 5: Your top mixes */}
       <div style={{ marginBottom: '40px' }}>
         {renderSectionHeader('Your top mixes')}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-          gap: '18px'
-        }}>
+        <div className="spotify-card-grid">
           {TOP_MIXES.map(item => (
             <div
               key={item.id}
@@ -1914,11 +1872,7 @@ export const MainContent: React.FC<MainContentProps> = ({
       {/* SECTION 6: Recommended for today */}
       <div style={{ marginBottom: '40px' }}>
         {renderSectionHeader('Recommended for today', 'Inspired by your recent activity')}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
-          gap: '18px'
-        }}>
+        <div className="spotify-card-grid">
           {RECOMMENDED_FOR_TODAY.map(item => (
             <div
               key={item.id}
@@ -2033,11 +1987,7 @@ export const MainContent: React.FC<MainContentProps> = ({
 
       {/* SECTION 7: Large Featured Cards (Atmospheric Canvas Cards) */}
       <div style={{ marginBottom: '24px' }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: '18px'
-        }}>
+        <div className="quick-access-grid" style={{ gap: '18px' }}>
           {FEATURED_RADIO_CARDS.map(item => (
             <div key={item.id} style={{ display: 'flex', flexDirection: 'column' }}>
               {item.topSubtitle && (

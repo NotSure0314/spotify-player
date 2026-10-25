@@ -67,14 +67,15 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   return (
     <aside
       style={{
-        width: 'var(--right-panel-width, 380px)',
+        width: 'var(--right-panel-width)',
         height: '100%',
         backgroundColor: 'var(--background-base, #121212)',
         borderRadius: 'var(--panel-radius, 8px)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        flexShrink: 0
+        flexShrink: 0,
+        transition: 'width 0.2s cubic-bezier(0.3, 0, 0, 1)'
       }}
       className="animate-fade-in"
     >
@@ -198,9 +199,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 <div style={{
                   position: 'relative',
                   width: '100%',
-                  aspectRatio: '9 / 14',
-                  minHeight: '460px',
-                  maxHeight: '520px',
+                  aspectRatio: '9 / 12',
+                  maxHeight: '460px',
                   borderRadius: '8px',
                   overflow: 'hidden',
                   boxShadow: '0 8px 24px rgba(0,0,0,0.5)',

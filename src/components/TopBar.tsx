@@ -59,9 +59,8 @@ export const TopBar: React.FC<TopBarProps> = ({
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
-        width: 'calc(100% - 460px)',
+        width: 'clamp(200px, 42vw, 520px)',
         maxWidth: '520px',
-        minWidth: '320px',
         zIndex: 1
       }}>
         {/* Home Button (Circle) */}

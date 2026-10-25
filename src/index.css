@@ -19,7 +19,9 @@
   --card-radius: 6px;
   --player-height: 72px;
   --top-bar-height: 64px;
-  --right-panel-width: 380px;
+  --sidebar-width: clamp(210px, 20vw, 280px);
+  --sidebar-collapsed-width: 72px;
+  --right-panel-width: clamp(260px, 26vw, 320px);
   accent-color: var(--accent-green);
 }
 
@@ -143,3 +145,133 @@ body {
 .spotify-eq-2 { animation: spotifyEq2 0.6s ease-in-out infinite; }
 .spotify-eq-3 { animation: spotifyEq3 0.8s ease-in-out infinite; }
 .spotify-eq-4 { animation: spotifyEq4 0.65s ease-in-out infinite; }
+
+/* ==========================================================================
+   Responsive Spotify Layout & Container Queries
+   ========================================================================== */
+
+.main-viewport {
+  container-type: inline-size;
+  container-name: mainview;
+}
+
+/* 1. Quick Access Grid (2 Columns on Compact/Medium, 4 Columns on Wide) */
+.quick-access-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+@container mainview (min-width: 780px) {
+  .quick-access-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@container mainview (max-width: 380px) {
+  .quick-access-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 2. Spotify Card Grid (Daily Mixes, Made For You, Albums) */
+.spotify-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 14px;
+}
+
+@container mainview (min-width: 780px) {
+  .spotify-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 18px;
+  }
+}
+
+@container mainview (max-width: 440px) {
+  .spotify-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 10px;
+  }
+}
+
+/* 3. Playlist Track Table Responsive Columns */
+.track-table-header,
+.track-table-row {
+  display: grid;
+  grid-template-columns: 40px 4fr 3fr 2fr 90px;
+  align-items: center;
+  padding: 8px 16px;
+}
+
+@container mainview (max-width: 850px) {
+  .track-table-header,
+  .track-table-row {
+    grid-template-columns: 40px 5fr 3fr 80px !important;
+  }
+  .track-col-date {
+    display: none !important;
+  }
+}
+
+@container mainview (max-width: 600px) {
+  .track-table-header,
+  .track-table-row {
+    grid-template-columns: 40px 1fr 70px !important;
+  }
+  .track-col-album,
+  .track-col-date {
+    display: none !important;
+  }
+}
+
+/* 4. Responsive Playlist Header */
+.playlist-header-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(16px, 2.5vw, 32px);
+  padding: clamp(24px, 3.5vw, 40px) clamp(20px, 3vw, 32px) clamp(16px, 2.5vw, 24px) clamp(20px, 3vw, 32px);
+}
+
+.playlist-header-cover {
+  width: clamp(128px, 18vw, 232px);
+  height: clamp(128px, 18vw, 232px);
+  border-radius: 6px;
+  object-fit: cover;
+  box-shadow: 0 4px 60px rgba(0,0,0,0.5);
+  flex-shrink: 0;
+}
+
+.playlist-header-title {
+  font-size: clamp(26px, 4.5vw, 68px);
+  font-weight: 900;
+  letter-spacing: -1.5px;
+  margin: 2px 0;
+  line-height: 1.05;
+}
+
+/* 5. Responsive Bottom Player Bar */
+@media (max-width: 850px) {
+  .player-pip-btn,
+  .player-fullscreen-btn,
+  .player-devices-btn {
+    display: none !important;
+  }
+  .volume-slider-wrap {
+    width: 60px !important;
+  }
+}
+
+@media (max-width: 650px) {
+  .now-playing-bar-root {
+    grid-template-columns: 1fr auto !important;
+  }
+  .player-volume-control {
+    display: none !important;
+  }
+  .player-extra-controls {
+    gap: 8px !important;
+  }
+}
+

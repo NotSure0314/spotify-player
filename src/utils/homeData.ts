@@ -23,14 +23,6 @@ export const QUICK_ACCESS_ITEMS: HomeCardItem[] = [
     spotifyUri: 'spotify:playlist:5k3iI5fE68jr4UdX2UG6NN'
   },
   {
-    id: 'peak-kanye',
-    title: 'Peak Kanye',
-    subtitle: 'Playlist • Rory',
-    image: '/covers/quick-peak-kanye.png',
-    type: 'playlist',
-    spotifyUri: 'spotify:playlist:6Fs9lBMpHdqjvQ6wCPDnKc'
-  },
-  {
     id: 'gym',
     title: 'Gym',
     subtitle: 'Playlist • Shreeji',
@@ -39,12 +31,12 @@ export const QUICK_ACCESS_ITEMS: HomeCardItem[] = [
     spotifyUri: 'spotify:playlist:0rPcNgfcMCzc8Z8rStIvBR'
   },
   {
-    id: 'masculine-white-girl',
-    title: 'Ultimate Masculine White Girl Playlist',
-    subtitle: 'Playlist • Shreeji',
-    image: '/covers/quick-ultimate-masculine.png',
+    id: 'peak-kanye',
+    title: 'Peak Kanye',
+    subtitle: 'Playlist • Rory',
+    image: '/covers/quick-peak-kanye.png',
     type: 'playlist',
-    spotifyUri: 'spotify:playlist:0eWPQwqiBULXb39IveEIbP'
+    spotifyUri: 'spotify:playlist:6Fs9lBMpHdqjvQ6wCPDnKc'
   },
   {
     id: 'enter-sandman',
@@ -53,6 +45,14 @@ export const QUICK_ACCESS_ITEMS: HomeCardItem[] = [
     image: '/covers/quick-enter-sandman.png',
     type: 'playlist',
     spotifyUri: 'spotify:playlist:2MPjgtZn4IxxV7lW9RjO3E'
+  },
+  {
+    id: 'masculine-white-girl',
+    title: 'Ultimate Masculine White Girl Playlist',
+    subtitle: 'Playlist • Shreeji',
+    image: '/covers/quick-ultimate-masculine.png',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:0eWPQwqiBULXb39IveEIbP'
   },
   {
     id: 'deepwork-v1',

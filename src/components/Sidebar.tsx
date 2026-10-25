@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Library, Plus, ArrowRight, Heart, Search, ListFilter, Download, Play } from 'lucide-react';
+import { Library, Plus, ArrowLeft, Heart, Search, ListFilter, Download, Play } from 'lucide-react';
 import { Playlist } from '../types';
 
 interface SidebarProps {
@@ -11,6 +11,8 @@ interface SidebarProps {
   onImportPlaylist: (url: string) => Promise<boolean>;
   onOpenSyncModal?: () => void;
   onPlayPlaylist?: (playlist: Playlist, autoPlay?: boolean) => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -21,7 +23,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   likedCount,
   onImportPlaylist,
   onOpenSyncModal,
-  onPlayPlaylist
+  onPlayPlaylist,
+  isCollapsed = false,
+  onToggleCollapse
 }) => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importInput, setImportInput] = useState('');
@@ -51,7 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside style={{
-      width: 'var(--sidebar-width)',
+      width: isCollapsed ? 'var(--sidebar-collapsed-width, 72px)' : 'var(--sidebar-width)',
       height: '100%',
       backgroundColor: 'var(--background-base)',
       borderRadius: 'var(--panel-radius)',
@@ -59,35 +63,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
       flexDirection: 'column',
       overflow: 'hidden',
       flexShrink: 0,
-      position: 'relative'
+      position: 'relative',
+      transition: 'width 0.2s cubic-bezier(0.3, 0, 0, 1)'
     }}>
       {/* 1. Library Header */}
-      <div style={{
-        padding: '16px 16px 8px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        color: 'var(--text-subdued)'
-      }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            cursor: 'pointer',
-            fontWeight: 700,
-            fontSize: '16px',
-            color: 'inherit',
-            transition: 'color 0.15s ease'
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
-        >
-          <Library size={24} />
-          <span>Your Library</span>
-        </div>
+      {isCollapsed ? (
+        <div style={{
+          padding: '16px 12px 10px 12px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '12px',
+          color: 'var(--text-subdued)',
+          flexShrink: 0
+        }}>
+          <div
+            onClick={onToggleCollapse}
+            title="Expand Your Library"
+            style={{
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '6px',
+              borderRadius: '50%',
+              color: 'inherit',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = '#ffffff';
+              e.currentTarget.style.backgroundColor = 'var(--background-elevated-base)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = 'var(--text-subdued)';
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+          >
+            <Library size={24} />
+          </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <button
             onClick={() => setShowImportModal(true)}
             title="Create playlist or folder"
@@ -114,130 +128,196 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <Plus size={20} />
           </button>
-
-          <button
-            title="Show more"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'inherit',
-              cursor: 'pointer',
-              borderRadius: '50%',
-              padding: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.15s ease'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.backgroundColor = 'var(--background-elevated-base)';
-              e.currentTarget.style.color = '#ffffff';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = 'var(--text-subdued)';
-            }}
-          >
-            <ArrowRight size={18} />
-          </button>
         </div>
-      </div>
-
-      {/* 2. Filter Pills */}
-      <div style={{ padding: '8px 16px', display: 'flex', gap: '8px' }}>
-        {['Playlists', 'Artists', 'Albums'].map(pill => (
-          <button
-            key={pill}
-            style={{
-              fontSize: '13px',
-              fontWeight: 600,
-              padding: '6px 12px',
-              borderRadius: '500px',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              color: '#ffffff',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'background-color 0.15s ease'
-            }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)')}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)')}
-          >
-            {pill}
-          </button>
-        ))}
-      </div>
-
-      {/* 3. Search & Sort Row */}
-      <div style={{
-        padding: '6px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        color: 'var(--text-subdued)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <button
-            onClick={() => setIsSearchOpen(!isSearchOpen)}
-            title="Search in Your Library"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'inherit',
-              cursor: 'pointer',
-              padding: '4px',
-              display: 'flex'
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
-          >
-            <Search size={18} />
-          </button>
-
-          {isSearchOpen && (
-            <input
-              type="text"
-              autoFocus
-              placeholder="Search in Your Library"
-              value={filterQuery}
-              onChange={e => setFilterQuery(e.target.value)}
-              style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '4px 8px',
-                color: '#ffffff',
-                fontSize: '12px',
-                outline: 'none',
-                width: '140px'
-              }}
-            />
-          )}
-        </div>
-
+      ) : (
         <div style={{
+          padding: '16px 16px 8px 16px',
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
-          fontSize: '12px',
-          fontWeight: 600,
-          cursor: 'pointer'
+          justifyContent: 'space-between',
+          color: 'var(--text-subdued)',
+          flexShrink: 0
         }}>
-          <span>Recents</span>
-          <ListFilter size={14} />
-        </div>
-      </div>
-
-      {/* 4. Playlists Scroll List */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 8px' }}>
-        {/* Liked Songs Entry - Only displayed if user has liked at least 1 song */}
-        {likedCount > 0 && (
           <div
-            onClick={() => onSelectView('liked')}
+            onClick={onToggleCollapse}
+            title="Collapse Your Library"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              padding: '8px',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: '16px',
+              color: 'inherit',
+              transition: 'color 0.15s ease'
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
+          >
+            <Library size={24} />
+            <span>Your Library</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <button
+              onClick={() => setShowImportModal(true)}
+              title="Create playlist or folder"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'inherit',
+                cursor: 'pointer',
+                borderRadius: '50%',
+                padding: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = 'var(--background-elevated-base)';
+                e.currentTarget.style.color = '#ffffff';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = 'var(--text-subdued)';
+              }}
+            >
+              <Plus size={20} />
+            </button>
+
+            <button
+              onClick={onToggleCollapse}
+              title="Collapse Your Library"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'inherit',
+                cursor: 'pointer',
+                borderRadius: '50%',
+                padding: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = 'var(--background-elevated-base)';
+                e.currentTarget.style.color = '#ffffff';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = 'var(--text-subdued)';
+              }}
+            >
+              <ArrowLeft size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Filter Pills (Only shown when expanded) */}
+      {!isCollapsed && (
+        <div style={{ padding: '8px 16px', display: 'flex', gap: '8px', flexShrink: 0 }}>
+          {['Playlists', 'Artists', 'Albums'].map(pill => (
+            <button
+              key={pill}
+              style={{
+                fontSize: '13px',
+                fontWeight: 600,
+                padding: '6px 12px',
+                borderRadius: '500px',
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                color: '#ffffff',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background-color 0.15s ease'
+              }}
+              onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)')}
+              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)')}
+            >
+              {pill}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* 3. Search & Sort Row (Only shown when expanded) */}
+      {!isCollapsed && (
+        <div style={{
+          padding: '6px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          color: 'var(--text-subdued)',
+          flexShrink: 0
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              title="Search in Your Library"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'inherit',
+                cursor: 'pointer',
+                padding: '4px',
+                display: 'flex'
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
+            >
+              <Search size={18} />
+            </button>
+
+            {isSearchOpen && (
+              <input
+                type="text"
+                autoFocus
+                placeholder="Search in Your Library"
+                value={filterQuery}
+                onChange={e => setFilterQuery(e.target.value)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  color: '#ffffff',
+                  fontSize: '12px',
+                  outline: 'none',
+                  width: '140px'
+                }}
+              />
+            )}
+          </div>
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}>
+            <span>Recents</span>
+            <ListFilter size={14} />
+          </div>
+        </div>
+      )}
+
+      {/* 4. Playlists Scroll List */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: isCollapsed ? '4px 0' : '4px 8px' }}>
+        {/* Liked Songs Entry - Only displayed if user has liked at least 1 song */}
+        {likedCount > 0 && (
+          <div
+            onClick={() => onSelectView('liked')}
+            title={isCollapsed ? 'Liked Songs' : undefined}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isCollapsed ? 'center' : 'flex-start',
+              gap: '12px',
+              padding: isCollapsed ? '8px 0' : '8px',
               borderRadius: 'var(--card-radius)',
               cursor: 'pointer',
               backgroundColor: currentView === 'liked' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
@@ -258,15 +338,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#ffffff',
               flexShrink: 0
             }}>
-              <Heart size={20} fill="#ffffff" />
+              <Heart size={20} fill="#ffffff" color="#ffffff" />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
-              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-base)' }}>Liked Songs</span>
-              <span style={{ fontSize: '12px', color: 'var(--text-subdued)' }}>Playlist • {likedCount} song{likedCount === 1 ? '' : 's'}</span>
-            </div>
+            {!isCollapsed && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', overflow: 'hidden' }}>
+                <span style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: currentView === 'liked' ? '#1ed760' : 'var(--text-base)',
+                  whiteSpace: 'nowrap',
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden'
+                }}>
+                  Liked Songs
+                </span>
+                <span style={{ fontSize: '12px', color: 'var(--text-subdued)' }}>
+                  Playlist • {likedCount} {likedCount === 1 ? 'song' : 'songs'}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -303,11 +395,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div
               key={pl.id}
               onClick={() => onSelectView('playlist', pl.id)}
+              title={isCollapsed ? pl.title : undefined}
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: isCollapsed ? 'center' : 'flex-start',
                 gap: '12px',
-                padding: '8px',
+                padding: isCollapsed ? '8px 0' : '8px',
                 borderRadius: 'var(--card-radius)',
                 cursor: 'pointer',
                 backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
@@ -366,21 +460,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <Play size={20} fill="#ffffff" color="#ffffff" style={{ marginLeft: '2px' }} />
                 </button>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', overflow: 'hidden' }}>
-                <span style={{
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: isSelected ? '#1ed760' : 'var(--text-base)',
-                  whiteSpace: 'nowrap',
-                  textOverflow: 'ellipsis',
-                  overflow: 'hidden'
-                }}>
-                  {pl.title}
-                </span>
-                <span style={{ fontSize: '12px', color: 'var(--text-subdued)' }}>
-                  Playlist • Spotify
-                </span>
-              </div>
+              {!isCollapsed && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', overflow: 'hidden' }}>
+                  <span style={{
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: isSelected ? '#1ed760' : 'var(--text-base)',
+                    whiteSpace: 'nowrap',
+                    textOverflow: 'ellipsis',
+                    overflow: 'hidden'
+                  }}>
+                    {pl.title}
+                  </span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-subdued)' }}>
+                    Playlist • Spotify
+                  </span>
+                </div>
+              )}
             </div>
           );
         })}
