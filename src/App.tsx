@@ -136,6 +136,11 @@ export function App() {
 
   // 1. Audio Engine Callbacks Setup
   useEffect(() => {
+    audioEngine.onPlaybackStateChange((playing) => {
+      setIsPlaying(playing);
+      isPlayingRef.current = playing;
+    });
+
     audioEngine.onTimeUpdate((current, duration) => {
       setProgress(current);
       progressRef.current = current;
@@ -989,6 +994,22 @@ export function App() {
     playlistInfo?: { id: string; title: string },
     preserveQueue: boolean = false
   ) => {
+    // If clicking the track that is already loaded in audioEngine, resume it directly
+    const engineTrack = audioEngine.getCurrentTrack();
+    if (
+      currentTrackRef.current &&
+      (currentTrackRef.current.id === track.id ||
+        (currentTrackRef.current.title.trim().toLowerCase() === track.title.trim().toLowerCase() &&
+         currentTrackRef.current.artist.trim().toLowerCase() === track.artist.trim().toLowerCase())) &&
+      engineTrack &&
+      audioEngine.hasLoadedTrack()
+    ) {
+      setIsPlaying(true);
+      isPlayingRef.current = true;
+      audioEngine.resume();
+      return;
+    }
+
     // Record previously playing track in playbackHistory if different
     if (currentTrackRef.current && currentTrackRef.current.id !== track.id) {
       setPlaybackHistory(prev => [...prev.slice(-50), currentTrackRef.current!]);

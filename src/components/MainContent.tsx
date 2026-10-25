@@ -778,7 +778,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                     (t.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase() &&
                      t.artist.trim().toLowerCase() === currentTrack.artist.trim().toLowerCase())
                   );
-                  if (isPlaying && isMatch) {
+                  if (isMatch) {
                     onTogglePlay();
                   } else {
                     const startTrack = isShuffle
@@ -934,7 +934,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   (t.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase() &&
                    t.artist.trim().toLowerCase() === currentTrack.artist.trim().toLowerCase())
                 );
-                if (isPlaying && isMatch) {
+                if (isMatch) {
                   onTogglePlay();
                 } else {
                   const startTrack = isShuffle

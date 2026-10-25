@@ -10,13 +10,17 @@ declare global {
 class AudioPlayerEngine {
   private audio: HTMLAudioElement;
   private ytPlayer: any = null;
+  private isYtReady: boolean = false;
   private isPlaying: boolean = false;
   private activeMode: 'yt' | 'html5' = 'yt';
   private currentTrack: Track | null = null;
   private volume: number = 0.75;
   private timeTicker: number | null = null;
+  private pendingTrackToPlay: { videoId: string; startSeconds: number } | null = null;
+  private videoIdCache = new Map<string, string>();
   private onTimeUpdateCallback: ((current: number, duration: number) => void) | null = null;
   private onTrackEndedCallback: (() => void) | null = null;
+  private onPlaybackStateChangeCallback: ((isPlaying: boolean) => void) | null = null;
 
   constructor() {
     this.audio = new Audio();
@@ -35,16 +39,34 @@ class AudioPlayerEngine {
       }
     });
 
+    this.audio.addEventListener('play', () => {
+      if (this.activeMode === 'html5') {
+        this.isPlaying = true;
+        this.notifyPlaybackStateChange(true);
+      }
+    });
+
+    this.audio.addEventListener('pause', () => {
+      if (this.activeMode === 'html5') {
+        this.isPlaying = false;
+        this.notifyPlaybackStateChange(false);
+      }
+    });
+
     this.audio.addEventListener('ended', () => {
       if (this.activeMode === 'html5') {
         this.isPlaying = false;
+        this.notifyPlaybackStateChange(false);
         if (this.onTrackEndedCallback) this.onTrackEndedCallback();
       }
     });
 
     this.audio.addEventListener('error', (e) => {
       console.warn('HTML5 audio error:', e);
-      if (this.activeMode === 'html5') this.isPlaying = false;
+      if (this.activeMode === 'html5') {
+        this.isPlaying = false;
+        this.notifyPlaybackStateChange(false);
+      }
     });
 
     // Initialize YouTube Iframe Player
@@ -68,20 +90,32 @@ class AudioPlayerEngine {
             },
             events: {
               onReady: () => {
+                this.isYtReady = true;
                 this.ytPlayer.setVolume(this.volume * 100);
+                if (this.pendingTrackToPlay) {
+                  this.ytPlayer.loadVideoById(this.pendingTrackToPlay);
+                  this.ytPlayer.playVideo();
+                  this.pendingTrackToPlay = null;
+                }
               },
               onStateChange: (event: any) => {
-                // 1 = PLAYING, 2 = PAUSED, 0 = ENDED
+                // 1 = PLAYING, 2 = PAUSED, 0 = ENDED, 3 = BUFFERING
                 if (event.data === 1) {
                   this.isPlaying = true;
                   this.startTimeTicker();
+                  this.notifyPlaybackStateChange(true);
                 } else if (event.data === 2) {
                   this.isPlaying = false;
                   this.stopTimeTicker();
+                  this.notifyPlaybackStateChange(false);
                 } else if (event.data === 0) {
                   this.isPlaying = false;
                   this.stopTimeTicker();
+                  this.notifyPlaybackStateChange(false);
                   if (this.onTrackEndedCallback) this.onTrackEndedCallback();
+                } else if (event.data === 3) {
+                  this.isPlaying = true;
+                  this.notifyPlaybackStateChange(true);
                 }
               },
               onError: (err: any) => {
@@ -131,8 +165,32 @@ class AudioPlayerEngine {
     if (this.currentTrack?.audioUrl) {
       this.audio.src = this.currentTrack.audioUrl;
       this.audio.currentTime = 0;
-      this.audio.play().catch(e => console.warn('Preview fallback failed:', e));
+      this.audio.play().then(() => {
+        this.isPlaying = true;
+        this.notifyPlaybackStateChange(true);
+      }).catch(e => {
+        console.warn('Preview fallback failed:', e);
+        this.isPlaying = false;
+        this.notifyPlaybackStateChange(false);
+      });
+    } else {
+      this.isPlaying = false;
+      this.notifyPlaybackStateChange(false);
     }
+  }
+
+  private notifyPlaybackStateChange(isPlaying: boolean) {
+    if (this.onPlaybackStateChangeCallback) {
+      try {
+        this.onPlaybackStateChangeCallback(isPlaying);
+      } catch (e) {
+        console.error('Error in onPlaybackStateChangeCallback:', e);
+      }
+    }
+  }
+
+  onPlaybackStateChange(cb: (isPlaying: boolean) => void) {
+    this.onPlaybackStateChangeCallback = cb;
   }
 
   onTimeUpdate(cb: (current: number, duration: number) => void) {
@@ -170,25 +228,50 @@ class AudioPlayerEngine {
   async playTrack(track: Track) {
     this.currentTrack = track;
     this.isPlaying = true;
+    this.notifyPlaybackStateChange(true);
 
-    // Reset any currently playing audio
+    // Reset HTML5 audio
     this.audio.pause();
     this.audio.currentTime = 0;
     this.stopTimeTicker();
+
+    const cacheKey = `${track.title.trim().toLowerCase()}:::${track.artist.trim().toLowerCase()}`;
+    const cachedVideoId = this.videoIdCache.get(cacheKey);
+
+    if (cachedVideoId) {
+      this.activeMode = 'yt';
+      if (this.isYtReady && this.ytPlayer && typeof this.ytPlayer.loadVideoById === 'function') {
+        this.ytPlayer.loadVideoById({
+          videoId: cachedVideoId,
+          startSeconds: 0
+        });
+        this.ytPlayer.playVideo();
+        return;
+      } else {
+        this.pendingTrackToPlay = { videoId: cachedVideoId, startSeconds: 0 };
+        return;
+      }
+    }
 
     // Query full song from YouTube so it starts at 0:00
     try {
       const res = await fetch(`/api/yt?title=${encodeURIComponent(track.title)}&artist=${encodeURIComponent(track.artist)}`);
       if (res.ok) {
         const data = await res.json();
-        if (data.videoId && this.ytPlayer && typeof this.ytPlayer.loadVideoById === 'function') {
+        if (data.videoId) {
+          this.videoIdCache.set(cacheKey, data.videoId);
           this.activeMode = 'yt';
-          this.ytPlayer.loadVideoById({
-            videoId: data.videoId,
-            startSeconds: 0
-          });
-          this.ytPlayer.playVideo();
-          return;
+          if (this.isYtReady && this.ytPlayer && typeof this.ytPlayer.loadVideoById === 'function') {
+            this.ytPlayer.loadVideoById({
+              videoId: data.videoId,
+              startSeconds: 0
+            });
+            this.ytPlayer.playVideo();
+            return;
+          } else {
+            this.pendingTrackToPlay = { videoId: data.videoId, startSeconds: 0 };
+            return;
+          }
         }
       }
     } catch (err) {
@@ -202,6 +285,7 @@ class AudioPlayerEngine {
   pause() {
     this.isPlaying = false;
     this.stopTimeTicker();
+    this.notifyPlaybackStateChange(false);
     if (this.activeMode === 'yt' && this.ytPlayer && typeof this.ytPlayer.pauseVideo === 'function') {
       try {
         this.ytPlayer.pauseVideo();
@@ -222,9 +306,11 @@ class AudioPlayerEngine {
   resume(): boolean {
     if (!this.currentTrack) {
       this.isPlaying = false;
+      this.notifyPlaybackStateChange(false);
       return false;
     }
     this.isPlaying = true;
+    this.notifyPlaybackStateChange(true);
     if (this.activeMode === 'yt' && this.ytPlayer && typeof this.ytPlayer.playVideo === 'function') {
       try {
         this.ytPlayer.playVideo();
@@ -232,7 +318,10 @@ class AudioPlayerEngine {
         return true;
       } catch {}
     } else if (this.currentTrack?.audioUrl) {
-      this.audio.play().catch(() => {});
+      this.audio.play().catch(() => {
+        this.isPlaying = false;
+        this.notifyPlaybackStateChange(false);
+      });
       return true;
     }
     return false;
@@ -241,6 +330,7 @@ class AudioPlayerEngine {
   stop() {
     this.isPlaying = false;
     this.stopTimeTicker();
+    this.notifyPlaybackStateChange(false);
     if (this.ytPlayer && typeof this.ytPlayer.stopVideo === 'function') {
       try {
         this.ytPlayer.stopVideo();
