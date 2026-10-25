@@ -340,6 +340,23 @@ export function App() {
             : matched.tracks[0];
           handlePlayTrack(startTrack, matched.tracks, { id: matched.id, title: matched.title });
         }
+        // If playlist was previously loaded with <= 100 tracks, re-fetch live to expand past 100!
+        if (matched.tracks.length <= 100) {
+          fetchLivePlaylistDetails(matched.id).then(details => {
+            if (details && details.tracks.length > matched!.tracks.length) {
+              const fullPlaylist: Playlist = {
+                ...matched!,
+                tracks: details.tracks,
+                coverUrl: getHighResImageUrl(details.coverUrl || matched!.coverUrl),
+                description: details.description || matched!.description || 'Spotify Playlist',
+                gradient: details.gradient || matched!.gradient || '#1e3a8a'
+              };
+              addImportedPlaylist(fullPlaylist);
+              setPlaylists(prev => prev.map(p => (p.id === matched!.id ? fullPlaylist : p)));
+              setViewedPlaylist(fullPlaylist);
+            }
+          });
+        }
         return;
       }
 

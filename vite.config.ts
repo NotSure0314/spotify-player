@@ -3,9 +3,31 @@ import react from '@vitejs/plugin-react';
 import url from 'url';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs';
 
 const execAsync = promisify(exec);
 const CLI_PATH = '/Applications/Spotify.app/Contents/MacOS/spotify_cli';
+
+// Helper to ensure Spotify desktop client is running for spotify_cli to fetch 100% of tracks (up to 5,000)
+async function ensureSpotifyRunning(): Promise<boolean> {
+  if (!fs.existsSync(CLI_PATH)) return false;
+  try {
+    const { stdout: statusOut } = await execAsync(`"${CLI_PATH}" status`, { timeout: 1500 }).catch(() => ({ stdout: '' }));
+    if (statusOut.includes('is running') || statusOut.includes('running')) return true;
+  } catch {}
+
+  try {
+    await execAsync('open -g -a Spotify', { timeout: 3000 }).catch(() => {});
+    for (let i = 0; i < 8; i++) {
+      await new Promise(r => setTimeout(r, 300));
+      try {
+        const { stdout: s } = await execAsync(`"${CLI_PATH}" status`, { timeout: 1000 });
+        if (s.includes('is running') || s.includes('running')) return true;
+      } catch {}
+    }
+  } catch {}
+  return false;
+}
 
 const globalCoverCache = new Map<string, string>();
 const globalAlbumCache = new Map<string, string>();
@@ -150,9 +172,12 @@ function spotifyStandalonePlugin(): Plugin {
 
             const fullUri = `spotify:playlist:${cleanId}`;
 
-            // Try local CLI first if available (provides 100% full playlist up to genuine tracks)
+            // Try local CLI first if available (provides 100% full playlist up to 5,000 genuine tracks)
             try {
-              const { stdout } = await execAsync(`"${CLI_PATH}" playlist get "${fullUri}" --limit 5000 --format json`, { timeout: 15000 });
+              // Ensure Spotify is running so playlists with 200+ tracks return all items
+              await ensureSpotifyRunning();
+
+              const { stdout } = await execAsync(`"${CLI_PATH}" playlist get "${fullUri}" --limit 5000 --format json`, { timeout: 20000 });
               const plData = JSON.parse(stdout);
               if (plData.tracks && plData.tracks.length > 0) {
                 // Trim Spotify desktop client's auto-appended recommendations
@@ -162,14 +187,20 @@ function spotifyStandalonePlugin(): Plugin {
                 }
 
                 const trackUris = plData.tracks.map((t: any) => t.uri).filter(Boolean);
+                const missingFromCache = trackUris.filter((u: string) => !globalCoverCache.has(u));
                 const batchSize = 50;
-                for (let i = 0; i < Math.min(trackUris.length, 5000); i += batchSize) {
-                  const batch = trackUris.slice(i, i + batchSize);
-                  const missingFromCache = batch.filter((u: string) => !globalCoverCache.has(u));
-                  if (missingFromCache.length > 0) {
+                const batches: string[][] = [];
+                for (let i = 0; i < missingFromCache.length; i += batchSize) {
+                  batches.push(missingFromCache.slice(i, i + batchSize));
+                }
+
+                // Lookup album covers in concurrent batches of 3
+                for (let i = 0; i < batches.length; i += 3) {
+                  const currentBatches = batches.slice(i, i + 3);
+                  await Promise.all(currentBatches.map(async (batch) => {
                     try {
-                      const urisArg = missingFromCache.map((u: string) => `"${u}"`).join(' ');
-                      const { stdout: lookupOut } = await execAsync(`"${CLI_PATH}" lookup ${urisArg} --format json`, { timeout: 3000 });
+                      const urisArg = batch.map((u: string) => `"${u}"`).join(' ');
+                      const { stdout: lookupOut } = await execAsync(`"${CLI_PATH}" lookup ${urisArg} --format json`, { timeout: 4000 });
                       const lookupData = JSON.parse(lookupOut);
                       (lookupData.entities || []).forEach((e: any) => {
                         if (e.uri && e.image_url) {
@@ -179,7 +210,7 @@ function spotifyStandalonePlugin(): Plugin {
                         }
                       });
                     } catch {}
-                  }
+                  }));
                 }
 
                 let playlistCover = globalCoverCache.get(fullUri) || '';

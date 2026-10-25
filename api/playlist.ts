@@ -67,14 +67,20 @@ export default async function handler(req: any, res: any) {
   try {
     // If Spotify is not running, ensure it starts quietly in background
     try {
-      const { stdout: statusOut } = await execAsync(`"${CLI_PATH}" status`, { timeout: 1000 }).catch(() => ({ stdout: '' }));
-      if (!statusOut.includes('is running')) {
-        await execAsync(`open -g -a Spotify`);
-        await new Promise(r => setTimeout(r, 1000));
+      const { stdout: statusOut } = await execAsync(`"${CLI_PATH}" status`, { timeout: 1500 }).catch(() => ({ stdout: '' }));
+      if (!statusOut.includes('is running') && !statusOut.includes('running')) {
+        await execAsync(`open -g -a Spotify`, { timeout: 3000 }).catch(() => {});
+        for (let i = 0; i < 8; i++) {
+          await new Promise(r => setTimeout(r, 300));
+          try {
+            const { stdout: s } = await execAsync(`"${CLI_PATH}" status`, { timeout: 1000 });
+            if (s.includes('is running') || s.includes('running')) break;
+          } catch {}
+        }
       }
     } catch {}
 
-    const { stdout } = await execAsync(`"${CLI_PATH}" playlist get "${fullUri}" --limit 5000 --format json`, { timeout: 15000 });
+    const { stdout } = await execAsync(`"${CLI_PATH}" playlist get "${fullUri}" --limit 5000 --format json`, { timeout: 20000 });
     const plData = JSON.parse(stdout);
     if (plData.tracks && plData.tracks.length > 0) {
       // Trim Spotify desktop client's auto-appended recommendations
@@ -85,16 +91,21 @@ export default async function handler(req: any, res: any) {
         plData.tracks = plData.tracks.slice(0, realTotalCount === 154 ? 152 : realTotalCount);
       }
 
-      // Lookup artwork for all genuine tracks
+      // Lookup artwork for all genuine tracks concurrently in batches of 3
       const trackUris = plData.tracks.map((t: any) => t.uri).filter(Boolean);
+      const missingFromCache = trackUris.filter((u: string) => !globalCoverCache.has(u));
       const batchSize = 50;
-      for (let i = 0; i < Math.min(trackUris.length, 5000); i += batchSize) {
-        const batch = trackUris.slice(i, i + batchSize);
-        const missingFromCache = batch.filter((u: string) => !globalCoverCache.has(u));
-        if (missingFromCache.length > 0) {
+      const batches: string[][] = [];
+      for (let i = 0; i < missingFromCache.length; i += batchSize) {
+        batches.push(missingFromCache.slice(i, i + batchSize));
+      }
+
+      for (let i = 0; i < batches.length; i += 3) {
+        const currentBatches = batches.slice(i, i + 3);
+        await Promise.all(currentBatches.map(async (batch) => {
           try {
-            const urisArg = missingFromCache.map((u: string) => `"${u}"`).join(' ');
-            const { stdout: lookupOut } = await execAsync(`"${CLI_PATH}" lookup ${urisArg} --format json`, { timeout: 3000 });
+            const urisArg = batch.map((u: string) => `"${u}"`).join(' ');
+            const { stdout: lookupOut } = await execAsync(`"${CLI_PATH}" lookup ${urisArg} --format json`, { timeout: 4000 });
             const lookupData = JSON.parse(lookupOut);
             (lookupData.entities || []).forEach((e: any) => {
               if (e.uri && e.image_url) {
@@ -104,7 +115,7 @@ export default async function handler(req: any, res: any) {
               }
             });
           } catch {}
-        }
+        }));
       }
 
       // Lookup playlist cover
