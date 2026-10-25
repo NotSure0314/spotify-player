@@ -26,7 +26,7 @@ export default async function handler(req: any, res: any) {
     });
     const html = await ytRes.text();
 
-    const videoIdMatch = html.match(/\/watch\?v=([a-zA-Z0-9_-]{11})/);
+    const videoIdMatch = html.match(/\/watch\?v=([a-zA-Z0-9_-]{11})/) || html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
     if (!videoIdMatch) {
       return res.status(404).json({ error: 'Video not found' });
     }

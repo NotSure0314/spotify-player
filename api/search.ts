@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { existsSync } from 'fs';
 
 const execAsync = promisify(exec);
 const CLI_PATH = '/Applications/Spotify.app/Contents/MacOS/spotify_cli';
@@ -142,45 +143,49 @@ export default async function handler(req: any, res: any) {
     const searchPlaylistsPromise = (async () => {
       let results: any[] = [];
 
-      try {
-        const { stdout } = await execAsync(
-          `"${CLI_PATH}" search "${trimmed.replace(/"/g, '')}" --type playlist --limit 12 --format json`,
-          { timeout: 3000 }
-        );
-        const data = JSON.parse(stdout);
-        const rawPlaylists = data.playlists || [];
+      if (existsSync(CLI_PATH)) {
+        try {
+          const { stdout } = await execAsync(
+            `"${CLI_PATH}" search "${trimmed.replace(/"/g, '')}" --type playlist --limit 12 --format json`,
+            { timeout: 3000 }
+          );
+          const data = JSON.parse(stdout);
+          const rawPlaylists = data.playlists || [];
 
-        results = await Promise.all(
-          rawPlaylists.map(async (p: any, idx: number) => {
-            const cleanId = p.uri.replace('spotify:playlist:', '');
-            let cover = coverCache.get(p.uri) || p.image || '';
+          results = await Promise.all(
+            rawPlaylists.map(async (p: any, idx: number) => {
+              const cleanId = p.uri.replace('spotify:playlist:', '');
+              let cover = coverCache.get(p.uri) || p.image || '';
 
-            if (!cover || cover.startsWith('spotify:')) {
-              try {
-                const r = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/playlist/${cleanId}`);
-                if (r.ok) {
-                  const d = await r.json();
-                  if (d.thumbnail_url) {
-                    cover = d.thumbnail_url;
-                    coverCache.set(p.uri, cover);
+              if (!cover || cover.startsWith('spotify:')) {
+                try {
+                  const r = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/playlist/${cleanId}`);
+                  if (r.ok) {
+                    const d = await r.json();
+                    if (d.thumbnail_url) {
+                      cover = d.thumbnail_url;
+                      coverCache.set(p.uri, cover);
+                    }
                   }
-                }
-              } catch {}
-            }
+                } catch {}
+              }
 
-            return {
-              id: p.uri,
-              playlistId: cleanId,
-              title: p.name || 'Untitled Playlist',
-              description: p.author ? `By ${p.author}` : 'Spotify Playlist',
-              author: p.author || 'Spotify',
-              coverUrl: cover || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80',
-              gradient: getPlaylistGradient(p.name || '', idx),
-              tracks: []
-            };
-          })
-        );
-      } catch {
+              return {
+                id: p.uri,
+                playlistId: cleanId,
+                title: p.name || 'Untitled Playlist',
+                description: p.author ? `By ${p.author}` : 'Spotify Playlist',
+                author: p.author || 'Spotify',
+                coverUrl: cover || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80',
+                gradient: getPlaylistGradient(p.name || '', idx),
+                tracks: []
+              };
+            })
+          );
+        } catch {}
+      }
+
+      if (results.length === 0) {
         // Fallback: match against Curated Public Playlists
         const lowerQ = trimmed.toLowerCase();
         const matched = CURATED_PUBLIC_PLAYLISTS.filter(

@@ -85,6 +85,61 @@ export default async function handler(req: any, res: any) {
           ]
         });
       }
+
+      if (cleanId.toLowerCase() === 'spotify') {
+        return res.status(200).json({
+          user: {
+            id: 'spotify',
+            uri: 'spotify:user:spotify',
+            name: 'Spotify',
+            avatar: 'https://i.scdn.co/image/ab67757000003b8255c25988a6cf314383d495fb',
+            verified: true
+          },
+          playlists: [
+            {
+              id: 'spotify:playlist:37i9dQZF1DXcBWIGoYBM5M',
+              playlistId: '37i9dQZF1DXcBWIGoYBM5M',
+              title: "Today's Top Hits",
+              description: "Spotify's biggest hits playlist.",
+              coverUrl: 'https://i.scdn.co/image/ab67706f00000002e8ccdd567fff6a597b87586b',
+              gradient: '#1e3a8a',
+              followers: 34000000,
+              tracks: []
+            },
+            {
+              id: 'spotify:playlist:37i9dQZEVXbMDoHDwVN2tF',
+              playlistId: '37i9dQZEVXbMDoHDwVN2tF',
+              title: 'Top 50 - Global',
+              description: 'Your daily update of the most played tracks right now.',
+              coverUrl: 'https://charts-images.scdn.co/assets/locale_en/regional/daily/region_global_default.jpg',
+              gradient: '#15803d',
+              followers: 18000000,
+              tracks: []
+            },
+            {
+              id: 'spotify:playlist:37i9dQZF1DX0XUsuxWHRQd',
+              playlistId: '37i9dQZF1DX0XUsuxWHRQd',
+              title: 'RapCaviar',
+              description: 'Music from Drake, Kendrick Lamar and more.',
+              coverUrl: 'https://i.scdn.co/image/ab67706f000000021b4a02be0495f32b5006b528',
+              gradient: '#7e22ce',
+              followers: 15000000,
+              tracks: []
+            },
+            {
+              id: 'spotify:playlist:37i9dQZF1DWXRqgorJj26U',
+              playlistId: '37i9dQZF1DWXRqgorJj26U',
+              title: 'Rock Classics',
+              description: 'Rock legends & timeless anthems that will rock you.',
+              coverUrl: 'https://i.scdn.co/image/ab67706f0000000258cb9f9b5a037b5f54ccca27',
+              gradient: '#b91c1c',
+              followers: 12000000,
+              tracks: []
+            }
+          ]
+        });
+      }
+
       return res.status(404).json({ error: 'Could not find Spotify profile or user has no public playlists.' });
     }
 

@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { existsSync } from 'fs';
 
 const execAsync = promisify(exec);
 const CLI_PATH = '/Applications/Spotify.app/Contents/MacOS/spotify_cli';
@@ -64,7 +65,8 @@ export default async function handler(req: any, res: any) {
   } catch {}
 
   // 2. Try local desktop CLI if available
-  try {
+  if (existsSync(CLI_PATH)) {
+    try {
     // If Spotify is not running, ensure it starts quietly in background
     try {
       const { stdout: statusOut } = await execAsync(`"${CLI_PATH}" status`, { timeout: 1500 }).catch(() => ({ stdout: '' }));
@@ -164,8 +166,9 @@ export default async function handler(req: any, res: any) {
         tracks
       });
     }
-  } catch (cliErr) {
-    // Fallback to web scraping & oEmbed
+    } catch (cliErr) {
+      // Fallback to web scraping & oEmbed
+    }
   }
 
   // 3. Web fallback: Scrape open.spotify.com embed
