@@ -40,7 +40,7 @@ interface MainContentProps {
   isPlaylistSaved?: boolean;
   onToggleSavePlaylist?: (playlist: Playlist) => void;
   isShuffle?: boolean;
-  onToggleShuffle?: () => void;
+  onToggleShuffle?: (playlist?: Playlist) => void;
   isPlaylistPinned?: boolean;
   onTogglePinPlaylist?: (playlist: Playlist) => void;
 }
@@ -778,22 +778,24 @@ export const MainContent: React.FC<MainContentProps> = ({
 
           {/* Shuffle Button */}
           <button
-            onClick={onToggleShuffle}
-            title={isShuffle ? "Disable shuffle" : "Enable shuffle"}
+            onClick={() => onToggleShuffle && onToggleShuffle(playlist)}
+            title={isShuffle ? "Disable shuffle" : "Shuffle play"}
             style={{
               background: 'none',
               border: 'none',
               color: isShuffle ? '#1ed760' : 'var(--text-subdued)',
               cursor: 'pointer',
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: 0,
+              position: 'relative',
+              padding: '4px',
               transition: 'color 0.15s ease, transform 0.15s ease'
             }}
             onMouseEnter={e => {
               if (!isShuffle) e.currentTarget.style.color = '#ffffff';
-              e.currentTarget.style.transform = 'scale(1.06)';
+              e.currentTarget.style.transform = 'scale(1.08)';
             }}
             onMouseLeave={e => {
               if (!isShuffle) e.currentTarget.style.color = 'var(--text-subdued)';
@@ -801,6 +803,16 @@ export const MainContent: React.FC<MainContentProps> = ({
             }}
           >
             <Shuffle size={26} strokeWidth={2.2} />
+            {isShuffle && (
+              <span style={{
+                width: '4px',
+                height: '4px',
+                backgroundColor: '#1ed760',
+                borderRadius: '50%',
+                position: 'absolute',
+                bottom: '-4px'
+              }} />
+            )}
           </button>
 
           {/* Plus / Check Save to Library Button */}
