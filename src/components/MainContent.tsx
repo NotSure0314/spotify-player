@@ -51,6 +51,50 @@ const formatDuration = (seconds: number) => {
   return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 };
 
+// Dynamic Title sizing matching official Spotify:
+// Priority #1 is the album/playlist photo fitting perfectly without displacement.
+// Short titles ("Gym", "ye") scale up to bold massive text; long titles dynamically
+// scale down cleanly to 1-2 lines without pushing or moving the photo.
+const getPlaylistTitleStyle = (title: string) => {
+  const len = (title || '').trim().length;
+  if (len <= 7) {
+    return {
+      fontSize: 'clamp(44px, 5.8vw, 88px)',
+      lineHeight: '1.0',
+      letterSpacing: '-0.04em',
+      maxLines: 1
+    };
+  } else if (len <= 14) {
+    return {
+      fontSize: 'clamp(34px, 4.2vw, 64px)',
+      lineHeight: '1.04',
+      letterSpacing: '-0.03em',
+      maxLines: 2
+    };
+  } else if (len <= 24) {
+    return {
+      fontSize: 'clamp(28px, 3.2vw, 46px)',
+      lineHeight: '1.08',
+      letterSpacing: '-0.025em',
+      maxLines: 2
+    };
+  } else if (len <= 38) {
+    return {
+      fontSize: 'clamp(22px, 2.4vw, 34px)',
+      lineHeight: '1.14',
+      letterSpacing: '-0.02em',
+      maxLines: 2
+    };
+  } else {
+    return {
+      fontSize: 'clamp(18px, 1.9vw, 26px)',
+      lineHeight: '1.18',
+      letterSpacing: '-0.015em',
+      maxLines: 2
+    };
+  }
+};
+
 export const MainContent: React.FC<MainContentProps> = ({
   currentView,
   selectedPlaylist,
@@ -571,6 +615,7 @@ export const MainContent: React.FC<MainContentProps> = ({
       ? '#450af5'
       : (extractedHeaderColor || getFallbackPlaylistColor(playlist.title, playlist.coverUrl));
     const darkenedHeaderColor = darkenColor(headerColor, 0.56);
+    const titleStyle = getPlaylistTitleStyle(playlist.title);
 
     return (
       <div className="animate-fade-in" style={{ paddingBottom: '32px' }}>
@@ -670,8 +715,7 @@ export const MainContent: React.FC<MainContentProps> = ({
           className="playlist-header-wrap"
           style={{
             background: `linear-gradient(to bottom, ${headerColor} 0%, rgba(18, 18, 18, 0.95) 100%)`,
-            transition: 'background 0.3s ease',
-            minHeight: '260px'
+            transition: 'background 0.3s ease'
           }}
         >
           {isLikedView ? (
@@ -694,23 +738,55 @@ export const MainContent: React.FC<MainContentProps> = ({
             />
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0, overflow: 'hidden' }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            gap: '4px',
+            minWidth: 0,
+            overflow: 'hidden',
+            flex: 1
+          }}>
             <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Playlist
+              {isLikedView
+                ? 'Playlist'
+                : (playlist.description?.toLowerCase().includes('album') || playlist.id.includes(':album:')
+                  ? 'Album'
+                  : 'Public Playlist')}
             </span>
-            <h1 className="playlist-header-title">
+            <h1
+              className="playlist-header-title"
+              style={{
+                fontSize: titleStyle.fontSize,
+                lineHeight: titleStyle.lineHeight,
+                letterSpacing: titleStyle.letterSpacing,
+                WebkitLineClamp: titleStyle.maxLines
+              }}
+            >
               {playlist.title}
             </h1>
-            <p style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.7)', marginTop: '4px' }}>
-              {playlist.description}
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 600, marginTop: '6px' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ fontSize: '16px', fontWeight: 300 }}>+</span>
-                <span>{playlist.author || 'Spotify'}</span>
+            {playlist.description && (
+              <p style={{
+                fontSize: '14px',
+                color: 'rgba(255, 255, 255, 0.7)',
+                marginTop: '4px',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                lineHeight: '1.4'
+              }}>
+                {playlist.description}
+              </p>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', fontSize: '14px', fontWeight: 600, marginTop: '6px' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#ffffff', fontWeight: 700 }}>
+                <span style={{ fontSize: '15px', fontWeight: 400 }}>+</span>
+                <span>{playlist.author || userProfile?.name || 'Spotify'}</span>
               </span>
-              <span>•</span>
-              <span>{playlist.tracks.length} songs,</span>
+              <span style={{ color: 'rgba(255, 255, 255, 0.7)' }}>•</span>
+              <span style={{ color: '#ffffff' }}>{playlist.tracks.length} songs,</span>
               <span style={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: 400 }}>{durationText}</span>
             </div>
           </div>

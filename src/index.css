@@ -230,25 +230,32 @@ body {
 .playlist-header-wrap {
   display: flex;
   align-items: flex-end;
-  gap: clamp(16px, 2.5vw, 32px);
-  padding: clamp(24px, 3.5vw, 40px) clamp(20px, 3vw, 32px) clamp(16px, 2.5vw, 24px) clamp(20px, 3vw, 32px);
+  gap: clamp(16px, 2.5vw, 28px);
+  padding: clamp(20px, 3vw, 32px) clamp(20px, 3vw, 32px) clamp(16px, 2.5vw, 24px) clamp(20px, 3vw, 32px);
+  min-height: clamp(260px, 30vh, 320px);
+  box-sizing: border-box;
 }
 
 .playlist-header-cover {
-  width: clamp(128px, 18vw, 232px);
-  height: clamp(128px, 18vw, 232px);
-  border-radius: 6px;
+  width: clamp(160px, 18vw, 232px);
+  height: clamp(160px, 18vw, 232px);
+  min-width: clamp(160px, 18vw, 232px);
+  min-height: clamp(160px, 18vw, 232px);
+  border-radius: 4px;
   object-fit: cover;
-  box-shadow: 0 4px 60px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 60px rgba(0, 0, 0, 0.5);
   flex-shrink: 0;
+  align-self: flex-end;
 }
 
 .playlist-header-title {
-  font-size: clamp(26px, 4.5vw, 68px);
   font-weight: 900;
-  letter-spacing: -1.5px;
-  margin: 2px 0;
-  line-height: 1.05;
+  margin: 4px 0 6px 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
 }
 
 /* 5. Responsive Bottom Player Bar */
