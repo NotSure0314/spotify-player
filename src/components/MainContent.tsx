@@ -18,7 +18,8 @@ import {
 interface MainContentProps {
   currentView: string;
   selectedPlaylist: Playlist | null;
-  onSelectPlaylist: (id: string) => void;
+  onSelectPlaylist: (id: string, autoPlay?: boolean) => void;
+  onPlayPlaylistOrAlbum?: (item: HomeCardItem, autoPlay?: boolean) => void;
   playlists: Playlist[];
   currentTrack: Track | null;
   isPlaying: boolean;
@@ -46,6 +47,7 @@ export const MainContent: React.FC<MainContentProps> = ({
   currentView,
   selectedPlaylist,
   onSelectPlaylist,
+  onPlayPlaylistOrAlbum,
   playlists,
   currentTrack,
   isPlaying,
@@ -858,7 +860,7 @@ export const MainContent: React.FC<MainContentProps> = ({
 
               return (
                 <div
-                  key={track.id}
+                  key={`${track.id}-${index}`}
                   onClick={() => onPlayTrack(track, playlist.tracks, { id: playlist.id, title: playlist.title })}
                   onMouseEnter={() => setHoveredTrackIndex(index)}
                   onMouseLeave={() => setHoveredTrackIndex(null)}
@@ -982,6 +984,11 @@ export const MainContent: React.FC<MainContentProps> = ({
   const displayName = userProfile?.name || userProfile?.id || 'Shreeji';
 
   const handleHomeCardClick = (item: HomeCardItem, autoPlay = true) => {
+    if (onPlayPlaylistOrAlbum) {
+      onPlayPlaylistOrAlbum(item, autoPlay);
+      return;
+    }
+
     // 1. If matches existing playlist by title or id:
     const matched = playlists.find(p =>
       p.title.toLowerCase().trim() === item.title.toLowerCase().trim() ||
@@ -992,7 +999,7 @@ export const MainContent: React.FC<MainContentProps> = ({
       if (autoPlay && matched.tracks.length > 0) {
         onPlayTrack(matched.tracks[0], matched.tracks, { id: matched.id, title: matched.title });
       }
-      onSelectPlaylist(matched.id);
+      onSelectPlaylist(matched.id, autoPlay);
       return;
     }
 

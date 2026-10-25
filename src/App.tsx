@@ -231,11 +231,122 @@ export function App() {
           )
         );
         if (autoPlay) {
-          handlePlayTrack(details.tracks[0]);
+          handlePlayTrack(details.tracks[0], details.tracks, { id: fullPlaylist.id, title: fullPlaylist.title });
         }
       }
     } else if (autoPlay && target.tracks.length > 0) {
-      handlePlayTrack(target.tracks[0]);
+      handlePlayTrack(target.tracks[0], target.tracks, { id: target.id, title: target.title });
+    }
+  };
+
+  // Handle playing or opening any playlist or album from Home, Search, or Library
+  const handlePlayPlaylistOrAlbum = async (
+    item: { id?: string; title?: string; image?: string; spotifyUri?: string; subtitle?: string; type?: string },
+    autoPlay: boolean = true
+  ) => {
+    const targetUri = item.spotifyUri || item.id || '';
+    const itemTitle = (item.title || '').toLowerCase().trim();
+    let matched = playlists.find(p =>
+      (targetUri && (p.id === targetUri || p.playlistId === targetUri.replace('spotify:playlist:', ''))) ||
+      (itemTitle && p.title.toLowerCase().trim() === itemTitle)
+    );
+
+    if (matched) {
+      setSelectedPlaylistId(matched.id);
+      setCurrentView('playlist');
+      if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
+
+      if (matched.tracks && matched.tracks.length > 0) {
+        if (autoPlay) {
+          handlePlayTrack(matched.tracks[0], matched.tracks, { id: matched.id, title: matched.title });
+        }
+        return;
+      }
+
+      // If tracks are not loaded yet, fetch them live
+      const details = await fetchLivePlaylistDetails(matched.id);
+      if (details && details.tracks.length > 0) {
+        const fullPlaylist: Playlist = {
+          ...matched,
+          tracks: details.tracks,
+          coverUrl: details.coverUrl || matched.coverUrl,
+          description: details.description || matched.description || 'Spotify Playlist',
+          gradient: details.gradient || matched.gradient || '#1e3a8a'
+        };
+        addImportedPlaylist(fullPlaylist);
+        setPlaylists(prev => prev.map(p => (p.id === matched!.id ? fullPlaylist : p)));
+        if (autoPlay) {
+          handlePlayTrack(details.tracks[0], details.tracks, { id: fullPlaylist.id, title: fullPlaylist.title });
+        }
+      }
+      return;
+    }
+
+    // If not currently in user's loaded playlists:
+    // 1. Try direct fetch by item.spotifyUri if provided
+    if (item.spotifyUri) {
+      const details = await fetchLivePlaylistDetails(item.spotifyUri);
+      if (details && details.tracks.length > 0) {
+        addImportedPlaylist(details);
+        setPlaylists(prev => [details, ...prev.filter(p => p.id !== details.id)]);
+        setSelectedPlaylistId(details.id);
+        setCurrentView('playlist');
+        if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
+        if (autoPlay) {
+          handlePlayTrack(details.tracks[0], details.tracks, { id: details.id, title: details.title });
+        }
+        return;
+      }
+    }
+
+    // 2. Otherwise search catalog for playlist or album title
+    if (item.title) {
+      const cleanSubtitle = (item.subtitle || '')
+        .replace(/(Playlist|Album|Track)\s*•\s*/gi, '')
+        .split(',')[0]
+        .split('•')[0]
+        .trim();
+      const searchQuery = cleanSubtitle && !item.title.toLowerCase().includes(cleanSubtitle.toLowerCase())
+        ? `${item.title} ${cleanSubtitle}`
+        : item.title;
+
+      const searchRes = await searchSpotifyCatalog(searchQuery);
+      if (searchRes.playlists && searchRes.playlists.length > 0) {
+        const foundPl = searchRes.playlists[0];
+        const details = await fetchLivePlaylistDetails(foundPl.id);
+        if (details && details.tracks.length > 0) {
+          addImportedPlaylist(details);
+          setPlaylists(prev => [details, ...prev.filter(p => p.id !== details.id)]);
+          setSelectedPlaylistId(details.id);
+          setCurrentView('playlist');
+          if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
+          if (autoPlay) {
+            handlePlayTrack(details.tracks[0], details.tracks, { id: details.id, title: details.title });
+          }
+          return;
+        }
+      }
+
+      // 3. Fallback: If catalog search returned tracks for this album/title
+      if (searchRes.tracks && searchRes.tracks.length > 0) {
+        const albumPlaylist: Playlist = {
+          id: `spotify:playlist:album-${Date.now()}`,
+          title: item.title,
+          description: item.subtitle || `Songs from ${item.title}`,
+          coverUrl: item.image || searchRes.tracks[0].coverUrl,
+          gradient: '#1e3a8a',
+          tracks: searchRes.tracks
+        };
+        addImportedPlaylist(albumPlaylist);
+        setPlaylists(prev => [albumPlaylist, ...prev]);
+        setSelectedPlaylistId(albumPlaylist.id);
+        setCurrentView('playlist');
+        if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
+        if (autoPlay) {
+          handlePlayTrack(searchRes.tracks[0], searchRes.tracks, { id: albumPlaylist.id, title: albumPlaylist.title });
+        }
+        return;
+      }
     }
   };
 
@@ -592,6 +703,7 @@ export function App() {
           likedCount={likedTrackIds.size}
           onImportPlaylist={handleImportPlaylist}
           onOpenSyncModal={() => setIsSyncModalOpen(true)}
+          onPlayPlaylist={pl => handlePlayPlaylistOrAlbum(pl, true)}
         />
 
         {/* Center Main Viewport */}
@@ -611,7 +723,14 @@ export function App() {
           <MainContent
             currentView={currentView}
             selectedPlaylist={selectedPlaylist}
-            onSelectPlaylist={id => handleSelectView('playlist', id)}
+            onSelectPlaylist={(id, autoPlay) => {
+              if (autoPlay) {
+                handlePlayPlaylistOrAlbum({ id }, true);
+              } else {
+                handleSelectView('playlist', id);
+              }
+            }}
+            onPlayPlaylistOrAlbum={handlePlayPlaylistOrAlbum}
             playlists={playlists}
             currentTrack={currentTrack}
             isPlaying={isPlaying}

@@ -10,6 +10,7 @@ export interface HomeCardItem {
   hasProgress?: boolean;
   progressPercent?: number;
   artistName?: string;
+  spotifyUri?: string;
 }
 
 export const QUICK_ACCESS_ITEMS: HomeCardItem[] = [
@@ -18,56 +19,64 @@ export const QUICK_ACCESS_ITEMS: HomeCardItem[] = [
     title: 'Hello Kitter',
     subtitle: 'Playlist • Shreeji',
     image: '/covers/quick-hello-kitter.png',
-    type: 'playlist'
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:5k3iI5fE68jr4UdX2UG6NN'
   },
   {
     id: 'peak-kanye',
     title: 'Peak Kanye',
     subtitle: 'Playlist • Rory',
     image: '/covers/quick-peak-kanye.png',
-    type: 'playlist'
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:6Fs9lBMpHdqjvQ6wCPDnKc'
   },
   {
     id: 'gym',
     title: 'Gym',
     subtitle: 'Playlist • Shreeji',
     image: '/covers/quick-gym.png',
-    type: 'playlist'
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:0rPcNgfcMCzc8Z8rStIvBR'
   },
   {
     id: 'masculine-white-girl',
     title: 'Ultimate Masculine White Girl Playlist',
     subtitle: 'Playlist • Shreeji',
     image: '/covers/quick-ultimate-masculine.png',
-    type: 'playlist'
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:0eWPQwqiBULXb39IveEIbP'
   },
   {
     id: 'enter-sandman',
     title: 'Enter Sandman',
     subtitle: 'Playlist • Dick',
     image: '/covers/quick-enter-sandman.png',
-    type: 'playlist'
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:2MPjgtZn4IxxV7lW9RjO3E'
   },
   {
     id: 'deepwork-v1',
     title: 'DeepWork Volume 1',
     subtitle: 'Album • DeepWork Research',
     image: '/covers/quick-deepwork-v1.png',
-    type: 'album'
+    type: 'album',
+    spotifyUri: 'spotify:playlist:6qeZgMKQB3S8FbjrNdPDCJ'
   },
   {
     id: 'larp-mix',
     title: 'LARP MIX',
     subtitle: 'Playlist • User',
     image: '/covers/quick-larp-mix.png',
-    type: 'playlist'
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:5AXBZqcu0HJeWRi6lFNm8Y'
   },
   {
     id: 'white-girl-bangers',
     title: 'White girl bangers 💃💅🏽💈💿🪩',
     subtitle: 'Playlist • Spotify',
     image: '/covers/quick-white-girl-bangers.png',
-    type: 'playlist'
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:2VdPwVMqEGb6dwQVRlC88L'
   }
 ];
 

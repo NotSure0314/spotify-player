@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Library, Plus, ArrowRight, Heart, Search, ListFilter, Download } from 'lucide-react';
+import { Library, Plus, ArrowRight, Heart, Search, ListFilter, Download, Play } from 'lucide-react';
 import { Playlist } from '../types';
 
 interface SidebarProps {
@@ -10,6 +10,7 @@ interface SidebarProps {
   likedCount: number;
   onImportPlaylist: (url: string) => Promise<boolean>;
   onOpenSyncModal?: () => void;
+  onPlayPlaylist?: (playlist: Playlist, autoPlay?: boolean) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -19,7 +20,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   selectedPlaylistId,
   likedCount,
   onImportPlaylist,
-  onOpenSyncModal
+  onOpenSyncModal,
+  onPlayPlaylist
 }) => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importInput, setImportInput] = useState('');
@@ -313,22 +315,57 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
               onMouseEnter={e => {
                 if (!isSelected) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                const playBtn = e.currentTarget.querySelector('.sidebar-item-play-btn') as HTMLElement;
+                if (playBtn) playBtn.style.opacity = '1';
               }}
               onMouseLeave={e => {
                 if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                const playBtn = e.currentTarget.querySelector('.sidebar-item-play-btn') as HTMLElement;
+                if (playBtn) playBtn.style.opacity = '0';
               }}
             >
-              <img
-                src={pl.coverUrl}
-                alt={pl.title}
-                style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '4px',
-                  objectFit: 'cover',
-                  flexShrink: 0
-                }}
-              />
+              <div style={{ position: 'relative', width: '48px', height: '48px', flexShrink: 0 }}>
+                <img
+                  src={pl.coverUrl}
+                  alt={pl.title}
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '4px',
+                    objectFit: 'cover'
+                  }}
+                />
+                <button
+                  className="sidebar-item-play-btn"
+                  onClick={e => {
+                    e.stopPropagation();
+                    if (onPlayPlaylist) {
+                      onPlayPlaylist(pl, true);
+                    } else {
+                      onSelectView('playlist', pl.id);
+                    }
+                  }}
+                  title={`Play ${pl.title}`}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '4px',
+                    backgroundColor: 'rgba(0,0,0,0.65)',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: 0,
+                    transition: 'opacity 0.15s ease',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Play size={20} fill="#ffffff" color="#ffffff" style={{ marginLeft: '2px' }} />
+                </button>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', overflow: 'hidden' }}>
                 <span style={{
                   fontSize: '14px',
