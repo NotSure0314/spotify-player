@@ -25,7 +25,7 @@ interface RightPanelProps {
   onSelectTab: (tab: 'nowPlaying' | 'lyrics' | 'queue') => void;
   queue: Track[];
   progress: number;
-  onPlayTrack: (track: Track) => void;
+  onPlayTrack: (track: Track, contextTracks?: Track[], playlistInfo?: { id: string; title: string }, preserveQueue?: boolean) => void;
   isLiked?: boolean;
   onToggleLike?: () => void;
 }
@@ -709,7 +709,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       </span>
                     </div>
                     <div
-                      onClick={() => onPlayTrack(nextTrack)}
+                      onClick={() => onPlayTrack(nextTrack, undefined, undefined, true)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -836,7 +836,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               {queue.map(track => (
                 <div
                   key={track.id}
-                  onClick={() => onPlayTrack(track)}
+                  onClick={() => onPlayTrack(track, undefined, undefined, true)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

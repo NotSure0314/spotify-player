@@ -1119,7 +1119,10 @@ export const MainContent: React.FC<MainContentProps> = ({
 
     if (matched) {
       if (autoPlay && matched.tracks.length > 0) {
-        onPlayTrack(matched.tracks[0], matched.tracks, { id: matched.id, title: matched.title });
+        const startTrack = isShuffle
+          ? matched.tracks[Math.floor(Math.random() * matched.tracks.length)]
+          : matched.tracks[0];
+        onPlayTrack(startTrack, matched.tracks, { id: matched.id, title: matched.title });
       }
       onSelectPlaylist(matched.id, autoPlay);
       return;

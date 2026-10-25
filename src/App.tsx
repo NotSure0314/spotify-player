@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { MainContent } from './components/MainContent';
@@ -288,12 +288,18 @@ export function App() {
           );
         }
         if (autoPlay) {
-          handlePlayTrack(details.tracks[0], details.tracks, { id: fullPlaylist.id, title: fullPlaylist.title });
+          const startTrack = isShuffleRef.current
+            ? details.tracks[Math.floor(Math.random() * details.tracks.length)]
+            : details.tracks[0];
+          handlePlayTrack(startTrack, details.tracks, { id: fullPlaylist.id, title: fullPlaylist.title });
         }
         return;
       }
     } else if (autoPlay && target.tracks.length > 0) {
-      handlePlayTrack(target.tracks[0], target.tracks, { id: target.id, title: target.title });
+      const startTrack = isShuffleRef.current
+        ? target.tracks[Math.floor(Math.random() * target.tracks.length)]
+        : target.tracks[0];
+      handlePlayTrack(startTrack, target.tracks, { id: target.id, title: target.title });
     }
   };
 
@@ -357,7 +363,10 @@ export function App() {
       setCurrentView('playlist');
       if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
       if (autoPlay && viewedPlaylist.tracks && viewedPlaylist.tracks.length > 0) {
-        handlePlayTrack(viewedPlaylist.tracks[0], viewedPlaylist.tracks, { id: viewedPlaylist.id, title: viewedPlaylist.title });
+        const startTrack = isShuffleRef.current
+          ? viewedPlaylist.tracks[Math.floor(Math.random() * viewedPlaylist.tracks.length)]
+          : viewedPlaylist.tracks[0];
+        handlePlayTrack(startTrack, viewedPlaylist.tracks, { id: viewedPlaylist.id, title: viewedPlaylist.title });
       }
       return;
     }
@@ -372,7 +381,10 @@ export function App() {
         setCurrentView('playlist');
         if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
         if (autoPlay) {
-          handlePlayTrack(details.tracks[0], details.tracks, { id: details.id, title: details.title });
+          const startTrack = isShuffleRef.current
+            ? details.tracks[Math.floor(Math.random() * details.tracks.length)]
+            : details.tracks[0];
+          handlePlayTrack(startTrack, details.tracks, { id: details.id, title: details.title });
         }
         return;
       }
@@ -399,7 +411,10 @@ export function App() {
           setCurrentView('playlist');
           if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
           if (autoPlay) {
-            handlePlayTrack(details.tracks[0], details.tracks, { id: details.id, title: details.title });
+            const startTrack = isShuffleRef.current
+              ? details.tracks[Math.floor(Math.random() * details.tracks.length)]
+              : details.tracks[0];
+            handlePlayTrack(startTrack, details.tracks, { id: details.id, title: details.title });
           }
           return;
         }
@@ -420,7 +435,10 @@ export function App() {
         setCurrentView('playlist');
         if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
         if (autoPlay) {
-          handlePlayTrack(searchRes.tracks[0], searchRes.tracks, { id: albumPlaylist.id, title: albumPlaylist.title });
+          const startTrack = isShuffleRef.current
+            ? searchRes.tracks[Math.floor(Math.random() * searchRes.tracks.length)]
+            : searchRes.tracks[0];
+          handlePlayTrack(startTrack, searchRes.tracks, { id: albumPlaylist.id, title: albumPlaylist.title });
         }
         return;
       }
@@ -601,20 +619,26 @@ export function App() {
   // Queue tracks:
   // If shuffle is ON, upcoming queue is the randomized shuffledQueue!
   // If shuffle is OFF, upcoming queue is the remaining tracks in sequential order after currentTrack!
-  const queueTracks = isShuffle
-    ? (shuffledQueue.length > 0 ? shuffledQueue : activePlayingTracks.filter(t => t.id !== currentTrack?.id))
-    : (currentTrack && activePlayingTracks.length > 0
-        ? (() => {
-            const curIdx = activePlayingTracks.findIndex(t => t.id === currentTrack.id || (
-              t.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase() &&
-              t.artist.trim().toLowerCase() === currentTrack.artist.trim().toLowerCase()
-            ));
-            if (curIdx >= 0) {
-              return activePlayingTracks.slice(curIdx + 1);
-            }
-            return activePlayingTracks.filter(t => t.id !== currentTrack.id);
-          })()
-        : activePlayingTracks);
+  const queueTracks = useMemo(() => {
+    if (isShuffle) {
+      if (shuffledQueue.length > 0) return shuffledQueue;
+      const other = currentTrack
+        ? activePlayingTracks.filter(t => t.id !== currentTrack.id)
+        : activePlayingTracks;
+      return shuffleArray(other);
+    }
+    if (currentTrack && activePlayingTracks.length > 0) {
+      const curIdx = activePlayingTracks.findIndex(t => t.id === currentTrack.id || (
+        t.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase() &&
+        t.artist.trim().toLowerCase() === currentTrack.artist.trim().toLowerCase()
+      ));
+      if (curIdx >= 0) {
+        return activePlayingTracks.slice(curIdx + 1);
+      }
+      return activePlayingTracks.filter(t => t.id !== currentTrack.id);
+    }
+    return activePlayingTracks;
+  }, [isShuffle, shuffledQueue, currentTrack, activePlayingTracks]);
 
   // Keep refs synchronized with state on every render
   currentTrackRef.current = currentTrack;
@@ -695,34 +719,29 @@ export function App() {
 
   // Toggle Shuffle with immediate queue reshuffle
   const handleToggleShuffle = () => {
-    setIsShuffle(prev => {
-      const nextShuffle = !prev;
-      isShuffleRef.current = nextShuffle;
-      try {
-        localStorage.setItem('spotify_player_shuffle', nextShuffle ? 'true' : 'false');
-      } catch {}
+    const nextShuffle = !isShuffleRef.current;
+    setIsShuffle(nextShuffle);
+    isShuffleRef.current = nextShuffle;
+    try {
+      localStorage.setItem('spotify_player_shuffle', nextShuffle ? 'true' : 'false');
+    } catch {}
 
-      const activeTracks = activePlaybackPlaylistRef.current?.tracks?.length
-        ? activePlaybackPlaylistRef.current.tracks
-        : (selectedPlaylistRef.current?.tracks?.length ? selectedPlaylistRef.current.tracks : allTracksRef.current);
+    const activeTracks = activePlaybackPlaylistRef.current?.tracks?.length
+      ? activePlaybackPlaylistRef.current.tracks
+      : (selectedPlaylistRef.current?.tracks?.length ? selectedPlaylistRef.current.tracks : allTracksRef.current);
 
-      if (nextShuffle && activeTracks && activeTracks.length > 0) {
-        const current = currentTrackRef.current;
-        const remaining = current
-          ? activeTracks.filter(t => t.id !== current.id && (
-              t.title.trim().toLowerCase() !== current.title.trim().toLowerCase() ||
-              t.artist.trim().toLowerCase() !== current.artist.trim().toLowerCase()
-            ))
-          : activeTracks;
-        const randomized = shuffleArray(remaining.length > 0 ? remaining : activeTracks);
-        setShuffledQueue(randomized);
-        shuffledQueueRef.current = randomized;
-      } else {
-        setShuffledQueue([]);
-        shuffledQueueRef.current = [];
-      }
-      return nextShuffle;
-    });
+    if (nextShuffle && activeTracks && activeTracks.length > 0) {
+      const current = currentTrackRef.current;
+      const remaining = current
+        ? activeTracks.filter(t => t.id !== current.id)
+        : activeTracks;
+      const randomized = shuffleArray(remaining.length > 0 ? remaining : activeTracks);
+      setShuffledQueue(randomized);
+      shuffledQueueRef.current = randomized;
+    } else {
+      setShuffledQueue([]);
+      shuffledQueueRef.current = [];
+    }
   };
 
   // Playback Handlers
@@ -797,11 +816,8 @@ export function App() {
     if (!preserveQueue && tracksPool && tracksPool.length > 0) {
       if (isShuffleRef.current) {
         // Pool of remaining tracks from this playlist, excluding the track just started
-        const remaining = tracksPool.filter(t => t.id !== track.id && (
-          t.title.trim().toLowerCase() !== track.title.trim().toLowerCase() ||
-          t.artist.trim().toLowerCase() !== track.artist.trim().toLowerCase()
-        ));
-        const randomized = shuffleArray(remaining);
+        const remaining = tracksPool.filter(t => t.id !== track.id);
+        const randomized = shuffleArray(remaining.length > 0 ? remaining : tracksPool);
         setShuffledQueue(randomized);
         shuffledQueueRef.current = randomized;
       } else {
@@ -809,10 +825,12 @@ export function App() {
         shuffledQueueRef.current = [];
       }
     } else if (preserveQueue && isShuffleRef.current) {
-      // If advancing through queue, remove played track from the head of shuffledQueue
-      const remaining = shuffledQueueRef.current.filter(t => t.id !== track.id);
-      setShuffledQueue(remaining);
-      shuffledQueueRef.current = remaining;
+      // If advancing through queue, pop played track from head or filter it out
+      const nextQueue = shuffledQueueRef.current.length > 0 && shuffledQueueRef.current[0].id === track.id
+        ? shuffledQueueRef.current.slice(1)
+        : shuffledQueueRef.current.filter(t => t.id !== track.id);
+      setShuffledQueue(nextQueue);
+      shuffledQueueRef.current = nextQueue;
     }
 
     setCurrentTrack(track);
@@ -853,25 +871,30 @@ export function App() {
         return;
       }
 
-      // 2. If shuffledQueue is empty, we reached the end of the shuffled playlist!
-      if (repeatModeRef.current === 'off') {
+      // 2. If shuffledQueue is empty, determine if repeat applies or generate new cycle
+      const current = currentTrackRef.current;
+      const otherTracks = current
+        ? list.filter(t => t.id !== current.id)
+        : list;
+      const pool = otherTracks.length > 0 ? otherTracks : list;
+
+      // Repeat off and finished all tracks in the playlist
+      if (repeatModeRef.current === 'off' && playbackHistoryRef.current.length >= list.length - 1) {
         setIsPlaying(false);
         isPlayingRef.current = false;
         audioEngine.pause();
         return;
       }
 
-      // Repeat is 'all' (or 'one'): re-shuffle the playlist and start a new cycle
-      const current = currentTrackRef.current;
-      const otherTracks = current
-        ? list.filter(t => t.id !== current.id)
-        : list;
-      const newShuffled = shuffleArray(otherTracks.length > 0 ? otherTracks : list);
+      // Otherwise re-shuffle playlist tracks and play next track
+      const newShuffled = shuffleArray(pool);
       if (newShuffled.length > 0) {
         const nextTrack = newShuffled[0];
-        setShuffledQueue(newShuffled.slice(1));
-        shuffledQueueRef.current = newShuffled.slice(1);
+        const nextQueue = newShuffled.slice(1);
+        setShuffledQueue(nextQueue);
+        shuffledQueueRef.current = nextQueue;
         handlePlayTrack(nextTrack, list, playlistInfo, true);
+        return;
       }
       return;
     }
