@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Sparkles, User, AlertCircle, ArrowRight } from 'lucide-react';
 import { SpotifyLogo } from './SpotifyLogo';
+import { getSavedLastAccount, LastAccount } from '../spotifyApi';
 
 interface SyncUserModalProps {
   isOpen: boolean;
@@ -18,6 +19,14 @@ export const SyncUserModal: React.FC<SyncUserModalProps> = ({
   const [usernameInput, setUsernameInput] = useState(currentUsername || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastAccount, setLastAccount] = useState<LastAccount | null>(() => getSavedLastAccount());
+
+  useEffect(() => {
+    if (isOpen) {
+      setLastAccount(getSavedLastAccount());
+      setError(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -165,28 +174,55 @@ export const SyncUserModal: React.FC<SyncUserModalProps> = ({
               Quick Suggestions
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => handleQuickSelect('gqfy40kjxlg18x0ygxux5ramv')}
-                style={{
-                  backgroundColor: '#2a2a2a',
-                  border: '1px solid #3e3e3e',
-                  color: '#ffffff',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  padding: '6px 12px',
-                  borderRadius: '500px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-                onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#383838')}
-                onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#2a2a2a')}
-              >
-                <User size={12} color="#1ed760" />
-                <span>Shreeji (Your Account)</span>
-              </button>
+              {lastAccount ? (
+                <button
+                  type="button"
+                  onClick={() => handleQuickSelect(lastAccount.id)}
+                  title={`Last account: ${lastAccount.name || lastAccount.id}`}
+                  style={{
+                    backgroundColor: '#2a2a2a',
+                    border: '1px solid #3e3e3e',
+                    color: '#ffffff',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    padding: '6px 12px',
+                    borderRadius: '500px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'background-color 0.15s ease'
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#383838')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#2a2a2a')}
+                >
+                  <User size={12} color="#1ed760" />
+                  <span>Last Account</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  title="No previous account added yet"
+                  style={{
+                    backgroundColor: '#1f1f1f',
+                    border: '1px solid #2e2e2e',
+                    color: '#666666',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    padding: '6px 12px',
+                    borderRadius: '500px',
+                    cursor: 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    opacity: 0.6
+                  }}
+                >
+                  <User size={12} color="#666666" />
+                  <span>Last Account</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => handleQuickSelect('spotify')}

@@ -176,6 +176,45 @@ export function saveUserProfile(user: SpotifyUserProfile | null) {
   }
 }
 
+export interface LastAccount {
+  id: string;
+  name?: string;
+}
+
+export const STORAGE_KEY_LAST_ACCOUNT = 'spotify_player_last_account';
+
+export function getSavedLastAccount(): LastAccount | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_LAST_ACCOUNT);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.id) return parsed;
+    }
+    // Fallback: discover other previously used account in localStorage
+    const currentUserId = getSavedUserProfile()?.id;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('spotify_imported_playlists_')) {
+        const id = key.replace('spotify_imported_playlists_', '');
+        if (id && id !== currentUserId) {
+          return { id, name: id === 'spotify' ? 'Spotify Official' : id };
+        }
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveLastAccount(account: LastAccount) {
+  try {
+    localStorage.setItem(STORAGE_KEY_LAST_ACCOUNT, JSON.stringify(account));
+  } catch (err) {
+    console.error('Failed to save last account:', err);
+  }
+}
+
 export async function fetchUserProfile(username: string): Promise<{ user: SpotifyUserProfile; playlists: Playlist[] } | null> {
   try {
     const res = await fetch(`/api/user?username=${encodeURIComponent(username.trim())}`);

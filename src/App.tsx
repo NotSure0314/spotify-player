@@ -23,6 +23,7 @@ import {
   savePinnedPlaylistIds,
   getSavedRemovedPlaylistIds,
   clearRemovedPlaylistId,
+  saveLastAccount,
   SpotifyUserProfile
 } from './spotifyApi';
 import { getHighResImageUrl } from './utils/imageUtils';
@@ -256,9 +257,18 @@ export function App() {
   // 3. Sync User Handler (called from Sync Modal)
   const handleSyncUser = async (username: string): Promise<boolean> => {
     try {
+      const prevAccount = userProfile || getSavedUserProfile();
       const result = await fetchUserProfile(username);
       if (!result || result.playlists.length === 0) {
         return false;
+      }
+
+      // Record previous user account when switching accounts so "Last Account" can switch back
+      if (prevAccount && prevAccount.id !== result.user.id) {
+        saveLastAccount({
+          id: prevAccount.id,
+          name: prevAccount.name || prevAccount.id
+        });
       }
 
       setUserProfile(result.user);
