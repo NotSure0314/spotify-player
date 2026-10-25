@@ -88,6 +88,9 @@ export function App() {
   const allTracksRef = useRef<Track[]>([]);
   const selectedPlaylistRef = useRef<Playlist | null>(null);
   const progressRef = useRef<number>(0);
+  const isPlayingRef = useRef<boolean>(isPlaying);
+  const togglePlayRef = useRef<() => void>(() => {});
+  const handleSeekRef = useRef<(seconds: number) => void>(() => {});
   const handleNextRef = useRef<() => void>(() => {});
   const handlePreviousRef = useRef<() => void>(() => {});
 
@@ -574,6 +577,7 @@ export function App() {
 
   // Keep refs synchronized with state on every render
   currentTrackRef.current = currentTrack;
+  isPlayingRef.current = isPlaying;
   activePlaybackPlaylistRef.current = activePlaybackPlaylist;
   isShuffleRef.current = isShuffle;
   repeatModeRef.current = repeatMode;
@@ -612,13 +616,19 @@ export function App() {
   // 6. Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      const target = e.target as HTMLElement | null;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target?.isContentEditable ||
+        target?.getAttribute('role') === 'textbox'
+      ) {
         return;
       }
 
-      if (e.code === 'Space') {
+      if (e.code === 'Space' || e.key === ' ') {
         e.preventDefault();
-        togglePlay();
+        togglePlayRef.current();
       } else if (e.code === 'ArrowRight' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         handleNextRef.current();
@@ -627,10 +637,10 @@ export function App() {
         handlePreviousRef.current();
       } else if (e.code === 'ArrowRight' && currentTrackRef.current) {
         e.preventDefault();
-        handleSeek(Math.min(currentTrackRef.current.duration, progressRef.current + 5));
+        handleSeekRef.current(Math.min(currentTrackRef.current.duration, progressRef.current + 5));
       } else if (e.code === 'ArrowLeft') {
         e.preventDefault();
-        handleSeek(Math.max(0, progressRef.current - 5));
+        handleSeekRef.current(Math.max(0, progressRef.current - 5));
       } else if (e.key.toLowerCase() === 'm') {
         setVolume(v => (v > 0 ? 0 : 0.75));
       }
@@ -642,13 +652,27 @@ export function App() {
 
   // Playback Handlers
   const togglePlay = () => {
-    if (isPlaying) {
+    if (isPlayingRef.current) {
       audioEngine.pause();
       setIsPlaying(false);
+      isPlayingRef.current = false;
     } else {
-      if (currentTrack) {
+      if (currentTrackRef.current) {
         audioEngine.resume();
         setIsPlaying(true);
+        isPlayingRef.current = true;
+      } else if (selectedPlaylistRef.current?.tracks?.length) {
+        handlePlayTrack(
+          selectedPlaylistRef.current.tracks[0],
+          selectedPlaylistRef.current.tracks,
+          { id: selectedPlaylistRef.current.id, title: selectedPlaylistRef.current.title }
+        );
+      } else if (playlists.length > 0 && playlists[0].tracks?.length) {
+        handlePlayTrack(
+          playlists[0].tracks[0],
+          playlists[0].tracks,
+          { id: playlists[0].id, title: playlists[0].title }
+        );
       }
     }
   };
@@ -798,12 +822,14 @@ export function App() {
   // Keep callback refs updated on each render
   handleNextRef.current = handleNext;
   handlePreviousRef.current = handlePrevious;
+  togglePlayRef.current = togglePlay;
 
   const handleSeek = (seconds: number) => {
     setProgress(seconds);
     progressRef.current = seconds;
     audioEngine.seek(seconds);
   };
+  handleSeekRef.current = handleSeek;
 
   const cycleRepeat = () => {
     setRepeatMode(prev => {
