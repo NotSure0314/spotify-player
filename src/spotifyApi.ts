@@ -12,6 +12,44 @@ const STORAGE_KEY_USER = 'spotify_synced_user_profile';
 const STORAGE_KEY_IMPORTED_PLAYLISTS = 'spotify_imported_playlists';
 const STORAGE_KEY_LIKED_TRACKS = 'spotify_liked_tracks';
 const STORAGE_KEY_PINNED_PLAYLISTS = 'spotify_pinned_playlists';
+const STORAGE_KEY_REMOVED_PLAYLISTS = 'spotify_removed_playlists';
+
+export function getSavedRemovedPlaylistIds(userId?: string): Set<string> {
+  try {
+    const currentUserId = userId || getSavedUserProfile()?.id;
+    const key = currentUserId ? `${STORAGE_KEY_REMOVED_PLAYLISTS}_${currentUserId}` : STORAGE_KEY_REMOVED_PLAYLISTS;
+    const raw = localStorage.getItem(key);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function saveRemovedPlaylistIds(ids: Set<string>, userId?: string) {
+  try {
+    const currentUserId = userId || getSavedUserProfile()?.id;
+    const key = currentUserId ? `${STORAGE_KEY_REMOVED_PLAYLISTS}_${currentUserId}` : STORAGE_KEY_REMOVED_PLAYLISTS;
+    localStorage.setItem(key, JSON.stringify(Array.from(ids)));
+  } catch (err) {
+    console.error('Failed to save removed playlist IDs:', err);
+  }
+}
+
+export function addRemovedPlaylistId(playlistId: string, userId?: string) {
+  const cleanId = playlistId.replace('spotify:playlist:', '').replace('spotify:album:', '');
+  const ids = getSavedRemovedPlaylistIds(userId);
+  ids.add(cleanId);
+  ids.add(playlistId);
+  saveRemovedPlaylistIds(ids, userId);
+}
+
+export function clearRemovedPlaylistId(playlistId: string, userId?: string) {
+  const cleanId = playlistId.replace('spotify:playlist:', '').replace('spotify:album:', '');
+  const ids = getSavedRemovedPlaylistIds(userId);
+  ids.delete(cleanId);
+  ids.delete(playlistId);
+  saveRemovedPlaylistIds(ids, userId);
+}
 
 export function getSavedImportedPlaylists(userId?: string): Playlist[] {
   try {
@@ -41,14 +79,19 @@ export function saveImportedPlaylists(playlists: Playlist[], userId?: string) {
 
 export function addImportedPlaylist(playlist: Playlist, userId?: string) {
   try {
-    const existing = getSavedImportedPlaylists(userId);
+    const currentUserId = userId || getSavedUserProfile()?.id;
+    const existing = getSavedImportedPlaylists(currentUserId);
     const cleanId = (playlist.playlistId || playlist.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
     const filtered = existing.filter(p => {
       const pClean = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
       return p.id !== playlist.id && pClean !== cleanId;
     });
     const updated = [playlist, ...filtered];
-    saveImportedPlaylists(updated, userId);
+    saveImportedPlaylists(updated, currentUserId);
+    clearRemovedPlaylistId(playlist.id, currentUserId);
+    if (playlist.playlistId) {
+      clearRemovedPlaylistId(playlist.playlistId, currentUserId);
+    }
   } catch (err) {
     console.error('Failed to add imported playlist:', err);
   }
@@ -56,13 +99,15 @@ export function addImportedPlaylist(playlist: Playlist, userId?: string) {
 
 export function removeImportedPlaylist(playlistId: string, userId?: string) {
   try {
-    const existing = getSavedImportedPlaylists(userId);
+    const currentUserId = userId || getSavedUserProfile()?.id;
+    const existing = getSavedImportedPlaylists(currentUserId);
     const cleanId = playlistId.replace('spotify:playlist:', '').replace('spotify:album:', '');
     const updated = existing.filter(p => {
       const pClean = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
       return p.id !== playlistId && pClean !== cleanId;
     });
-    saveImportedPlaylists(updated, userId);
+    saveImportedPlaylists(updated, currentUserId);
+    addRemovedPlaylistId(playlistId, currentUserId);
   } catch (err) {
     console.error('Failed to remove imported playlist:', err);
   }

@@ -21,13 +21,21 @@ import {
   saveLikedTrackIds,
   getSavedPinnedPlaylistIds,
   savePinnedPlaylistIds,
+  getSavedRemovedPlaylistIds,
+  clearRemovedPlaylistId,
   SpotifyUserProfile
 } from './spotifyApi';
 import { getHighResImageUrl } from './utils/imageUtils';
 
 export function App() {
-  const [playlists, setPlaylists] = useState<Playlist[]>(() => getSavedImportedPlaylists());
-  const [pinnedPlaylistIds, setPinnedPlaylistIds] = useState<string[]>(() => getSavedPinnedPlaylistIds());
+  const [playlists, setPlaylists] = useState<Playlist[]>(() => {
+    const user = getSavedUserProfile();
+    return getSavedImportedPlaylists(user?.id);
+  });
+  const [pinnedPlaylistIds, setPinnedPlaylistIds] = useState<string[]>(() => {
+    const user = getSavedUserProfile();
+    return getSavedPinnedPlaylistIds(user?.id);
+  });
   const [viewedPlaylist, setViewedPlaylist] = useState<Playlist | null>(null);
   const [currentView, setCurrentView] = useState<string>('home');
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
@@ -54,7 +62,10 @@ export function App() {
   const [shuffledQueue, setShuffledQueue] = useState<Track[]>([]);
   const [playbackHistory, setPlaybackHistory] = useState<Track[]>([]);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('all');
-  const [likedTrackIds, setLikedTrackIds] = useState<Set<string>>(() => getSavedLikedTrackIds());
+  const [likedTrackIds, setLikedTrackIds] = useState<Set<string>>(() => {
+    const user = getSavedUserProfile();
+    return getSavedLikedTrackIds(user?.id);
+  });
 
   // Playlist context currently being listened to (for scoped shuffle & sequential auto-play)
   const [activePlaybackPlaylist, setActivePlaybackPlaylist] = useState<{
@@ -129,26 +140,13 @@ export function App() {
     audioEngine.setVolume(volume);
   }, []);
 
-  // Sync liked tracks to storage scoped to active user
-  useEffect(() => {
-    if (userProfile?.id) {
-      saveLikedTrackIds(likedTrackIds, userProfile.id);
-    }
-  }, [likedTrackIds, userProfile?.id]);
-
-  // Sync pinned playlists to storage scoped to active user
-  useEffect(() => {
-    if (userProfile?.id) {
-      savePinnedPlaylistIds(pinnedPlaylistIds, userProfile.id);
-    }
-  }, [pinnedPlaylistIds, userProfile?.id]);
-
-  // 2. Initial Load: Sync User Playlists & Merge with Persisted Imported Playlists
+  // 2. Initial Load: Sync User Playlists & Merge with Persisted Scoped Library
   useEffect(() => {
     async function initUser() {
       const saved = getSavedUserProfile();
       const targetUser = saved?.id || 'spotify';
-      const savedImported = getSavedImportedPlaylists(saved?.id);
+      const savedImported = getSavedImportedPlaylists(targetUser);
+      const removedIds = getSavedRemovedPlaylistIds(targetUser);
 
       try {
         const result = await fetchUserProfile(targetUser);
@@ -162,12 +160,25 @@ export function App() {
               : { ...p, coverUrl: getHighResImageUrl(p.coverUrl) }
           );
 
-          // Merge imported playlists (persisted for this user) with user profile playlists
-          const importedIds = new Set(savedImported.map(p => p.id));
-          const deduplicatedUser = userPlaylists.filter(p => !importedIds.has(p.id));
-          let allPlaylists = [...savedImported, ...deduplicatedUser];
+          // Merge imported/saved playlists (persisted for this user) with user profile playlists
+          let allPlaylists: Playlist[];
+          if (savedImported && savedImported.length > 0) {
+            const savedIds = new Set(
+              savedImported.map(p => (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', ''))
+            );
+            const deduplicatedUser = userPlaylists.filter(p => {
+              const cleanId = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+              return !savedIds.has(cleanId) && !removedIds.has(cleanId);
+            });
+            allPlaylists = [...savedImported, ...deduplicatedUser];
+          } else {
+            allPlaylists = userPlaylists.filter(p => {
+              const cleanId = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+              return !removedIds.has(cleanId);
+            });
+          }
 
-          // If any imported playlist was previously saved with <= 100 tracks, upgrade it if firstDetails has more
+          // If any playlist was previously saved with <= 100 tracks, upgrade it if firstDetails has more
           if (firstDetails && firstDetails.tracks.length > 0) {
             allPlaylists = allPlaylists.map(p => {
               if ((p.id === result.playlists[0].id || p.playlistId === result.playlists[0].playlistId) && firstDetails.tracks.length > p.tracks.length) {
@@ -179,12 +190,16 @@ export function App() {
             });
           }
 
+          // Persist the combined library for this user
+          saveImportedPlaylists(allPlaylists, result.user.id);
           setPlaylists(allPlaylists);
           setSelectedPlaylistId(prev => prev || allPlaylists[0]?.id || null);
 
-          // Scoped pinned playlists for this user
+          // Scoped pinned playlists & liked tracks for this user
           const savedPinned = getSavedPinnedPlaylistIds(result.user.id);
           setPinnedPlaylistIds(savedPinned);
+          const savedLiked = getSavedLikedTrackIds(result.user.id);
+          setLikedTrackIds(savedLiked);
 
           if (firstDetails?.tracks?.length && !currentTrack) {
             setCurrentTrack(firstDetails.tracks[0]);
@@ -222,8 +237,32 @@ export function App() {
           : { ...p, coverUrl: getHighResImageUrl(p.coverUrl) }
       );
 
+      // Load existing saved playlists & removed playlist IDs for THIS specific user account
+      const savedUserLibrary = getSavedImportedPlaylists(result.user.id);
+      const removedIds = getSavedRemovedPlaylistIds(result.user.id);
+      let userMergedLibrary: Playlist[];
+
+      if (savedUserLibrary && savedUserLibrary.length > 0) {
+        // User already has saved playlists or modifications for this account:
+        // PRESERVE ALL SAVED PLAYLISTS (including custom imports and saved additions)
+        const savedIds = new Set(
+          savedUserLibrary.map(p => (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', ''))
+        );
+        const deduplicatedProfile = fullPlaylists.filter(p => {
+          const cleanId = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+          return !savedIds.has(cleanId) && !removedIds.has(cleanId);
+        });
+        userMergedLibrary = [...savedUserLibrary, ...deduplicatedProfile];
+      } else {
+        // First sync for this user: initialize with their public profile playlists
+        userMergedLibrary = fullPlaylists.filter(p => {
+          const cleanId = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+          return !removedIds.has(cleanId);
+        });
+      }
+
       // Persist the user's library isolated to their account ID
-      saveImportedPlaylists(fullPlaylists, result.user.id);
+      saveImportedPlaylists(userMergedLibrary, result.user.id);
 
       // Clean legacy global key so other accounts never pick up previous accounts
       try {
@@ -236,12 +275,14 @@ export function App() {
       const userPinned = getSavedPinnedPlaylistIds(result.user.id);
       setPinnedPlaylistIds(userPinned);
 
-      setPlaylists(fullPlaylists);
-      setSelectedPlaylistId(fullPlaylists[0].id);
+      setPlaylists(userMergedLibrary);
+      setSelectedPlaylistId(userMergedLibrary[0]?.id || null);
       setViewedPlaylist(null);
       setCurrentView('home');
 
-      if (firstDetails?.tracks?.length) {
+      if (userMergedLibrary[0]?.tracks?.length) {
+        setCurrentTrack(userMergedLibrary[0].tracks[0]);
+      } else if (firstDetails?.tracks?.length) {
         setCurrentTrack(firstDetails.tracks[0]);
       }
       return true;
@@ -292,7 +333,7 @@ export function App() {
         };
         setViewedPlaylist(fullPlaylist);
         if (isLibraryPl) {
-          addImportedPlaylist(fullPlaylist);
+          addImportedPlaylist(fullPlaylist, userProfile?.id);
           setPlaylists(prev =>
             prev.map(p =>
               p.id === playlist.id ? fullPlaylist : p
@@ -351,7 +392,7 @@ export function App() {
                 description: details.description || matched!.description || 'Spotify Playlist',
                 gradient: details.gradient || matched!.gradient || '#1e3a8a'
               };
-              addImportedPlaylist(fullPlaylist);
+              addImportedPlaylist(fullPlaylist, userProfile?.id);
               setPlaylists(prev => prev.map(p => (p.id === matched!.id ? fullPlaylist : p)));
               setViewedPlaylist(fullPlaylist);
             }
@@ -370,7 +411,7 @@ export function App() {
           description: details.description || matched.description || 'Spotify Playlist',
           gradient: details.gradient || matched.gradient || '#1e3a8a'
         };
-        addImportedPlaylist(fullPlaylist);
+        addImportedPlaylist(fullPlaylist, userProfile?.id);
         setPlaylists(prev => prev.map(p => (p.id === matched!.id ? fullPlaylist : p)));
         setViewedPlaylist(fullPlaylist);
         if (autoPlay) {
@@ -512,12 +553,12 @@ export function App() {
         const cleanP = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
         return p.id !== target.id && cleanP !== targetClean;
       }));
-      removeImportedPlaylist(target.id);
+      removeImportedPlaylist(target.id, userProfile?.id);
       if (target.playlistId) {
-        removeImportedPlaylist(target.playlistId);
+        removeImportedPlaylist(target.playlistId, userProfile?.id);
       }
     } else {
-      addImportedPlaylist(target);
+      addImportedPlaylist(target, userProfile?.id);
       setPlaylists(prev => [target, ...prev.filter(p => p.id !== target.id)]);
     }
   };
@@ -547,10 +588,14 @@ export function App() {
     });
 
     if (isPinned) {
-      setPinnedPlaylistIds(prev => prev.filter(pid => {
-        const cleanPid = pid.replace('spotify:playlist:', '').replace('spotify:album:', '');
-        return pid !== target.id && cleanPid !== targetClean;
-      }));
+      setPinnedPlaylistIds(prev => {
+        const next = prev.filter(pid => {
+          const cleanPid = pid.replace('spotify:playlist:', '').replace('spotify:album:', '');
+          return pid !== target.id && cleanPid !== targetClean;
+        });
+        savePinnedPlaylistIds(next, userProfile?.id);
+        return next;
+      });
     } else {
       // Pin playlist: if not in library yet, also add to library
       const isSaved = playlists.some(p => {
@@ -558,14 +603,18 @@ export function App() {
         return p.id === target.id || pClean === targetClean;
       });
       if (!isSaved) {
-        addImportedPlaylist(target);
+        addImportedPlaylist(target, userProfile?.id);
         setPlaylists(prev => [target, ...prev.filter(p => p.id !== target.id)]);
       }
 
-      setPinnedPlaylistIds(prev => [target.id, ...prev.filter(pid => {
-        const cleanPid = pid.replace('spotify:playlist:', '').replace('spotify:album:', '');
-        return pid !== target.id && cleanPid !== targetClean;
-      })]);
+      setPinnedPlaylistIds(prev => {
+        const next = [target.id, ...prev.filter(pid => {
+          const cleanPid = pid.replace('spotify:playlist:', '').replace('spotify:album:', '');
+          return pid !== target.id && cleanPid !== targetClean;
+        })];
+        savePinnedPlaylistIds(next, userProfile?.id);
+        return next;
+      });
     }
   };
 
@@ -588,7 +637,7 @@ export function App() {
               gradient: details.gradient || currentPl?.gradient || '#1e3a8a'
             };
             if (isLibraryPl) {
-              addImportedPlaylist(fullPlaylist);
+              addImportedPlaylist(fullPlaylist, userProfile?.id);
               setPlaylists(prev =>
                 prev.map(p => (p.id === selectedPlaylistId || p.playlistId === selectedPlaylistId ? fullPlaylist : p))
               );
@@ -1104,6 +1153,7 @@ export function App() {
       } else {
         next.add(trackId);
       }
+      saveLikedTrackIds(next, userProfile?.id);
       return next;
     });
   };
@@ -1113,7 +1163,8 @@ export function App() {
     const imported = await importSpotifyPlaylist(url);
     if (!imported) return false;
 
-    addImportedPlaylist(imported);
+    addImportedPlaylist(imported, userProfile?.id);
+    clearRemovedPlaylistId(imported.id, userProfile?.id);
     setPlaylists(prev => {
       const filtered = prev.filter(p => p.id !== imported.id && p.playlistId !== imported.playlistId);
       return [imported, ...filtered];
