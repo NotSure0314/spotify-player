@@ -155,21 +155,21 @@ body {
   container-name: mainview;
 }
 
-/* 1. Quick Access Grid (2 Columns on Compact/Medium, 4 Columns on Wide) */
+/* 1. Quick Access Grid (2 Columns on Compact/Medium/Standard, 4 Columns on Ultra-Wide) */
 .quick-access-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 8px 12px;
   margin-bottom: 32px;
 }
 
-@container mainview (min-width: 780px) {
+@container mainview (min-width: 1350px) {
   .quick-access-grid {
     grid-template-columns: repeat(4, 1fr);
   }
 }
 
-@container mainview (max-width: 380px) {
+@container mainview (max-width: 420px) {
   .quick-access-grid {
     grid-template-columns: 1fr;
   }

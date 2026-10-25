@@ -1099,7 +1099,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                 cursor: 'pointer',
                 position: 'relative',
                 transition: 'background-color 0.2s ease',
-                height: 'clamp(56px, 5.2vw, 64px)'
+                height: '48px'
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.16)';
@@ -1121,12 +1121,12 @@ export const MainContent: React.FC<MainContentProps> = ({
               <img
                 src={displayImage}
                 alt={displayTitle}
-                style={{ width: 'clamp(56px, 5.2vw, 64px)', height: 'clamp(56px, 5.2vw, 64px)', objectFit: 'cover', flexShrink: 0 }}
+                style={{ width: '48px', height: '48px', objectFit: 'cover', flexShrink: 0 }}
               />
               <span style={{
-                fontSize: 'clamp(12px, 1.1vw, 14px)',
+                fontSize: '13px',
                 fontWeight: 700,
-                padding: '0 clamp(8px, 1.2vw, 16px)',
+                padding: '0 12px',
                 flex: 1,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -1144,15 +1144,15 @@ export const MainContent: React.FC<MainContentProps> = ({
                   handleHomeCardClick({ ...item, title: displayTitle, image: displayImage }, true);
                 }}
                 style={{
-                  width: '40px',
-                  height: '40px',
+                  width: '36px',
+                  height: '36px',
                   borderRadius: '50%',
                   backgroundColor: '#1ed760',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
-                  marginRight: '12px',
+                  marginRight: '8px',
                   opacity: 0,
                   transform: 'scale(0.9)',
                   transition: 'opacity 0.2s ease, transform 0.15s ease',
