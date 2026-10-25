@@ -1193,17 +1193,46 @@ export const MainContent: React.FC<MainContentProps> = ({
   // 3. HOME VIEW (DEFAULT)
   const displayName = userProfile?.name || userProfile?.id || 'Shreeji';
 
+  // Resolve card properties so user's real library playlist covers and titles ALWAYS take precedence
+  const resolveCardProps = (item: HomeCardItem) => {
+    const itemTitle = (item.title || '').toLowerCase().trim();
+    const itemUri = (item.spotifyUri || item.id || '').replace('spotify:playlist:', '').replace('spotify:album:', '').toLowerCase().trim();
+
+    const matched = playlists.find(p => {
+      const pCleanId = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '').toLowerCase().trim();
+      if (itemUri && pCleanId === itemUri) return true;
+      const pTitle = p.title.toLowerCase().trim();
+      return pTitle === itemTitle || (itemTitle.length > 3 && pTitle.startsWith(itemTitle)) || (pTitle.length > 3 && itemTitle.startsWith(pTitle));
+    });
+
+    const displayImage = getHighResImageUrl((matched && matched.coverUrl) ? matched.coverUrl : item.image);
+    const displayTitle = matched?.title || item.title;
+    const resolvedItem: HomeCardItem = {
+      ...item,
+      title: displayTitle,
+      image: displayImage,
+      spotifyUri: matched ? (matched.playlistId || matched.id) : item.spotifyUri
+    };
+
+    return { matched, displayImage, displayTitle, resolvedItem };
+  };
+
   const handleHomeCardClick = (item: HomeCardItem, autoPlay = true) => {
     if (onPlayPlaylistOrAlbum) {
       onPlayPlaylistOrAlbum(item, autoPlay);
       return;
     }
 
+    const itemTitle = (item.title || '').toLowerCase().trim();
+    const itemUri = (item.spotifyUri || item.id || '').replace('spotify:playlist:', '').replace('spotify:album:', '').toLowerCase().trim();
+
     // 1. If matches existing playlist by title or id:
-    const matched = playlists.find(p =>
-      p.title.toLowerCase().trim() === item.title.toLowerCase().trim() ||
-      p.id.toLowerCase().trim() === item.id.toLowerCase().trim()
-    );
+    const matched = playlists.find(p => {
+      const pCleanId = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '').toLowerCase().trim();
+      if (itemUri && pCleanId === itemUri) return true;
+      const pTitle = p.title.toLowerCase().trim();
+      return pTitle === itemTitle || (itemTitle.length > 3 && pTitle.startsWith(itemTitle)) || (pTitle.length > 3 && itemTitle.startsWith(pTitle));
+    });
 
     if (matched) {
       if (autoPlay && matched.tracks.length > 0) {
@@ -1311,15 +1340,12 @@ export const MainContent: React.FC<MainContentProps> = ({
       {/* Responsive Quick Access Grid (2 columns on compact/medium, 4 columns on wide) */}
       <div className="quick-access-grid">
         {QUICK_ACCESS_ITEMS.map((item, index) => {
-          // If there is an existing loaded playlist matching title, link to it
-          const matched = playlists.find(p => p.title.toLowerCase().trim() === item.title.toLowerCase().trim());
-          const displayImage = getHighResImageUrl(item.image || matched?.coverUrl || '');
-          const displayTitle = matched?.title || item.title;
+          const { displayImage, displayTitle, resolvedItem } = resolveCardProps(item);
 
           return (
             <div
               key={item.id || index}
-              onClick={() => handleHomeCardClick({ ...item, title: displayTitle, image: displayImage }, false)}
+              onClick={() => handleHomeCardClick(resolvedItem, false)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1391,7 +1417,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                 className="quick-play-btn"
                 onClick={e => {
                   e.stopPropagation();
-                  handleHomeCardClick({ ...item, title: displayTitle, image: displayImage }, true);
+                  handleHomeCardClick(resolvedItem, true);
                 }}
                 style={{
                   width: '36px',
@@ -1566,115 +1592,119 @@ export const MainContent: React.FC<MainContentProps> = ({
       <div style={{ marginBottom: '40px' }}>
         {renderSectionHeader('Jump back in')}
         <div className="spotify-card-grid">
-          {JUMP_BACK_IN_ITEMS.map(item => (
-            <div
-              key={item.id}
-              onClick={() => handleHomeCardClick(item)}
-              style={{
-                backgroundColor: '#181818',
-                padding: '16px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s ease',
-                position: 'relative'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.backgroundColor = '#282828';
-                const playBtn = e.currentTarget.querySelector('.jump-play-btn') as HTMLElement;
-                if (playBtn) {
-                  playBtn.style.opacity = '1';
-                  playBtn.style.transform = 'translateY(0)';
-                }
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.backgroundColor = '#181818';
-                const playBtn = e.currentTarget.querySelector('.jump-play-btn') as HTMLElement;
-                if (playBtn) {
-                  playBtn.style.opacity = '0';
-                  playBtn.style.transform = 'translateY(8px)';
-                }
-              }}
-            >
-              <div style={{
-                position: 'relative',
-                width: '100%',
-                paddingBottom: '100%',
-                marginBottom: '12px',
-                borderRadius: '6px',
-                overflow: 'hidden',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
-              }}>
-                <img
-                  src={getHighResImageUrl(item.image)}
-                  alt={item.title}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover'
-                  }}
-                />
+          {JUMP_BACK_IN_ITEMS.map(item => {
+            const { displayImage, displayTitle, resolvedItem } = resolveCardProps(item);
 
-                {/* Floating Play Button */}
-                <button
-                  className="jump-play-btn"
-                  onClick={e => {
-                    e.stopPropagation();
-                    handleHomeCardClick(item, true);
-                  }}
-                  title={`Play ${item.title}`}
-                  style={{
-                    position: 'absolute',
-                    right: '8px',
-                    bottom: '8px',
-                    width: '46px',
-                    height: '46px',
-                    borderRadius: '50%',
-                    backgroundColor: '#1ed760',
-                    border: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
-                    opacity: 0,
-                    transform: 'translateY(8px)',
-                    transition: 'opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease',
-                    cursor: 'pointer'
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
-                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
-                >
-                  <SpotifyPlayIcon size={20} fill="#000000" />
-                </button>
+            return (
+              <div
+                key={item.id}
+                onClick={() => handleHomeCardClick(resolvedItem)}
+                style={{
+                  backgroundColor: '#181818',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease',
+                  position: 'relative'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.backgroundColor = '#282828';
+                  const playBtn = e.currentTarget.querySelector('.jump-play-btn') as HTMLElement;
+                  if (playBtn) {
+                    playBtn.style.opacity = '1';
+                    playBtn.style.transform = 'translateY(0)';
+                  }
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.backgroundColor = '#181818';
+                  const playBtn = e.currentTarget.querySelector('.jump-play-btn') as HTMLElement;
+                  if (playBtn) {
+                    playBtn.style.opacity = '0';
+                    playBtn.style.transform = 'translateY(8px)';
+                  }
+                }}
+              >
+                <div style={{
+                  position: 'relative',
+                  width: '100%',
+                  paddingBottom: '100%',
+                  marginBottom: '12px',
+                  borderRadius: '6px',
+                  overflow: 'hidden',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+                }}>
+                  <img
+                    src={displayImage}
+                    alt={displayTitle}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover'
+                    }}
+                  />
+
+                  {/* Floating Play Button */}
+                  <button
+                    className="jump-play-btn"
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleHomeCardClick(resolvedItem, true);
+                    }}
+                    title={`Play ${displayTitle}`}
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      bottom: '8px',
+                      width: '46px',
+                      height: '46px',
+                      borderRadius: '50%',
+                      backgroundColor: '#1ed760',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
+                      opacity: 0,
+                      transform: 'translateY(8px)',
+                      transition: 'opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
+                  >
+                    <SpotifyPlayIcon size={20} fill="#000000" />
+                  </button>
+                </div>
+
+                <h3 style={{
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  color: '#ffffff',
+                  marginBottom: '4px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  {displayTitle}
+                </h3>
+                <p style={{
+                  fontSize: '12px',
+                  color: 'var(--text-subdued)',
+                  lineHeight: 1.4,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  margin: 0
+                }}>
+                  {item.subtitle}
+                </p>
               </div>
-
-              <h3 style={{
-                fontSize: '15px',
-                fontWeight: 700,
-                color: '#ffffff',
-                marginBottom: '4px',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis'
-              }}>
-                {item.title}
-              </h3>
-              <p style={{
-                fontSize: '12px',
-                color: 'var(--text-subdued)',
-                lineHeight: 1.4,
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                margin: 0
-              }}>
-                {item.subtitle}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -1682,133 +1712,137 @@ export const MainContent: React.FC<MainContentProps> = ({
       <div style={{ marginBottom: '40px' }}>
         {renderSectionHeader('Recents')}
         <div className="spotify-card-grid">
-          {RECENTS_ITEMS.map(item => (
-            <div
-              key={item.id}
-              onClick={() => handleHomeCardClick(item)}
-              style={{
-                backgroundColor: '#181818',
-                padding: '16px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s ease',
-                position: 'relative'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.backgroundColor = '#282828';
-                const playBtn = e.currentTarget.querySelector('.recent-play-btn') as HTMLElement;
-                if (playBtn) {
-                  playBtn.style.opacity = '1';
-                  playBtn.style.transform = 'translateY(0)';
-                }
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.backgroundColor = '#181818';
-                const playBtn = e.currentTarget.querySelector('.recent-play-btn') as HTMLElement;
-                if (playBtn) {
-                  playBtn.style.opacity = '0';
-                  playBtn.style.transform = 'translateY(8px)';
-                }
-              }}
-            >
-              <div style={{
-                position: 'relative',
-                width: '100%',
-                paddingBottom: '100%',
-                marginBottom: '12px',
-                borderRadius: '6px',
-                overflow: 'hidden',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
-              }}>
-                <img
-                  src={getHighResImageUrl(item.image)}
-                  alt={item.title}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover'
-                  }}
-                />
+          {RECENTS_ITEMS.map(item => {
+            const { displayImage, displayTitle, resolvedItem } = resolveCardProps(item);
 
-                {/* Progress bar for partially played tracks */}
-                {item.hasProgress && (
-                  <div style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: '3px',
-                    backgroundColor: 'rgba(255,255,255,0.2)'
-                  }}>
-                    <div style={{
+            return (
+              <div
+                key={item.id}
+                onClick={() => handleHomeCardClick(resolvedItem)}
+                style={{
+                  backgroundColor: '#181818',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease',
+                  position: 'relative'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.backgroundColor = '#282828';
+                  const playBtn = e.currentTarget.querySelector('.recent-play-btn') as HTMLElement;
+                  if (playBtn) {
+                    playBtn.style.opacity = '1';
+                    playBtn.style.transform = 'translateY(0)';
+                  }
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.backgroundColor = '#181818';
+                  const playBtn = e.currentTarget.querySelector('.recent-play-btn') as HTMLElement;
+                  if (playBtn) {
+                    playBtn.style.opacity = '0';
+                    playBtn.style.transform = 'translateY(8px)';
+                  }
+                }}
+              >
+                <div style={{
+                  position: 'relative',
+                  width: '100%',
+                  paddingBottom: '100%',
+                  marginBottom: '12px',
+                  borderRadius: '6px',
+                  overflow: 'hidden',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+                }}>
+                  <img
+                    src={displayImage}
+                    alt={displayTitle}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
                       height: '100%',
-                      width: `${item.progressPercent || 50}%`,
-                      backgroundColor: '#1ed760'
-                    }} />
-                  </div>
-                )}
+                      objectFit: 'cover'
+                    }}
+                  />
 
-                {/* Floating Play Button */}
-                <button
-                  className="recent-play-btn"
-                  onClick={e => {
-                    e.stopPropagation();
-                    handleHomeCardClick(item, true);
-                  }}
-                  title={`Play ${item.title}`}
-                  style={{
-                    position: 'absolute',
-                    right: '8px',
-                    bottom: '8px',
-                    width: '46px',
-                    height: '46px',
-                    borderRadius: '50%',
-                    backgroundColor: '#1ed760',
-                    border: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
-                    opacity: 0,
-                    transform: 'translateY(8px)',
-                    transition: 'opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease',
-                    cursor: 'pointer'
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
-                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
-                >
-                  <SpotifyPlayIcon size={20} fill="#000000" />
-                </button>
+                  {/* Progress bar for partially played tracks */}
+                  {item.hasProgress && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: '3px',
+                      backgroundColor: 'rgba(255,255,255,0.2)'
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${item.progressPercent || 50}%`,
+                        backgroundColor: '#1ed760'
+                      }} />
+                    </div>
+                  )}
+
+                  {/* Floating Play Button */}
+                  <button
+                    className="recent-play-btn"
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleHomeCardClick(resolvedItem, true);
+                    }}
+                    title={`Play ${displayTitle}`}
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      bottom: '8px',
+                      width: '46px',
+                      height: '46px',
+                      borderRadius: '50%',
+                      backgroundColor: '#1ed760',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
+                      opacity: 0,
+                      transform: 'translateY(8px)',
+                      transition: 'opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
+                  >
+                    <SpotifyPlayIcon size={20} fill="#000000" />
+                  </button>
+                </div>
+
+                <h3 style={{
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  color: '#ffffff',
+                  marginBottom: '4px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  {displayTitle}
+                </h3>
+                <p style={{
+                  fontSize: '12px',
+                  color: 'var(--text-subdued)',
+                  lineHeight: 1.4,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  margin: 0
+                }}>
+                  {item.subtitle}
+                </p>
               </div>
-
-              <h3 style={{
-                fontSize: '15px',
-                fontWeight: 700,
-                color: '#ffffff',
-                marginBottom: '4px',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis'
-              }}>
-                {item.title}
-              </h3>
-              <p style={{
-                fontSize: '12px',
-                color: 'var(--text-subdued)',
-                lineHeight: 1.4,
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                margin: 0
-              }}>
-                {item.subtitle}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

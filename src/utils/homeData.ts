@@ -26,9 +26,9 @@ export const QUICK_ACCESS_ITEMS: HomeCardItem[] = [
     id: 'gym',
     title: 'Gym',
     subtitle: 'Playlist • Shreeji',
-    image: 'https://image-cdn-ak.spotifycdn.com/image/ab67706c0000d72cc1277cc06401a3f12819c5ab',
+    image: 'https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da842d8e4ca6999297f03bfa15b3',
     type: 'playlist',
-    spotifyUri: 'spotify:playlist:0rPcNgfcMCzc8Z8rStIvBR'
+    spotifyUri: 'spotify:playlist:1GbuGNkiWPHsKoEBZaQ3Xx'
   },
   {
     id: 'peak-kanye',
@@ -215,9 +215,10 @@ export const RECENTS_ITEMS: HomeCardItem[] = [
   {
     id: 'recent-gym',
     title: 'Gym',
-    subtitle: '2 songs added',
-    image: '/covers/recent-gym.png',
-    type: 'playlist'
+    subtitle: 'Playlist • Shreeji',
+    image: 'https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da842d8e4ca6999297f03bfa15b3',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:1GbuGNkiWPHsKoEBZaQ3Xx'
   },
   {
     id: 'recent-enter-sandman',
