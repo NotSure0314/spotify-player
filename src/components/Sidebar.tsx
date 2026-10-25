@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Library, Plus, ArrowLeft, Heart, Search, ListFilter, Download, Play } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Library, Plus, ArrowLeft, Heart, Search, ListFilter, Download, Play, Pin } from 'lucide-react';
 import { Playlist } from '../types';
+import { SpotifyUserProfile } from '../spotifyApi';
 
 interface SidebarProps {
   currentView: string;
@@ -13,6 +14,9 @@ interface SidebarProps {
   onPlayPlaylist?: (playlist: Playlist, autoPlay?: boolean) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  pinnedPlaylistIds?: string[];
+  onTogglePinPlaylist?: (playlist: Playlist) => void;
+  userProfile?: SpotifyUserProfile | null;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -25,7 +29,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenSyncModal,
   onPlayPlaylist,
   isCollapsed = false,
-  onToggleCollapse
+  onToggleCollapse,
+  pinnedPlaylistIds = [],
+  onTogglePinPlaylist,
+  userProfile
 }) => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importInput, setImportInput] = useState('');
@@ -33,6 +40,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [importError, setImportError] = useState('');
   const [filterQuery, setFilterQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; playlist: Playlist } | null>(null);
+
+  useEffect(() => {
+    const handleClose = () => setContextMenu(null);
+    if (contextMenu) {
+      window.addEventListener('click', handleClose);
+      return () => window.removeEventListener('click', handleClose);
+    }
+  }, [contextMenu]);
 
   const handleImportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,9 +65,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
+  const pinnedSet = new Set(
+    (pinnedPlaylistIds || []).map(id => id.replace('spotify:playlist:', '').replace('spotify:album:', ''))
+  );
+
+  const isItemPinned = (pl: Playlist) => {
+    const cleanId = (pl.playlistId || pl.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+    return pinnedSet.has(cleanId) || (pinnedPlaylistIds || []).includes(pl.id);
+  };
+
   const filteredPlaylists = filterQuery.trim()
     ? playlists.filter(p => p.title.toLowerCase().includes(filterQuery.toLowerCase()))
     : playlists;
+
+  // Pin playlists to the very top, respecting pinned order
+  const pinnedPlaylists: Playlist[] = [];
+  for (const pid of (pinnedPlaylistIds || [])) {
+    const cleanPid = pid.replace('spotify:playlist:', '').replace('spotify:album:', '');
+    const found = filteredPlaylists.find(p => {
+      const pClean = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+      return p.id === pid || pClean === cleanPid;
+    });
+    if (found && !pinnedPlaylists.some(p => p.id === found.id)) {
+      pinnedPlaylists.push(found);
+    }
+  }
+
+  const unpinnedPlaylists = filteredPlaylists.filter(p => !isItemPinned(p));
+  const sortedDisplayPlaylists = [...pinnedPlaylists, ...unpinnedPlaylists];
 
   return (
     <aside style={{
@@ -389,13 +430,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
 
-        {filteredPlaylists.map(pl => {
+        {sortedDisplayPlaylists.map(pl => {
           const isSelected = currentView === 'playlist' && selectedPlaylistId === pl.id;
+          const isPinned = isItemPinned(pl);
           return (
             <div
               key={pl.id}
               onClick={() => onSelectView('playlist', pl.id)}
-              title={isCollapsed ? pl.title : undefined}
+              onContextMenu={e => {
+                e.preventDefault();
+                setContextMenu({ x: e.clientX, y: e.clientY, playlist: pl });
+              }}
+              title={isCollapsed ? `${pl.title}${isPinned ? ' (Pinned)' : ''}` : undefined}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -429,6 +475,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     objectFit: 'cover'
                   }}
                 />
+                {isCollapsed && isPinned && (
+                  <div
+                    title="Pinned playlist"
+                    style={{
+                      position: 'absolute',
+                      top: '2px',
+                      right: '2px',
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(0,0,0,0.7)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Pin size={8} fill="#1ed760" color="#1ed760" style={{ transform: 'rotate(-45deg)' }} />
+                  </div>
+                )}
                 <button
                   className="sidebar-item-play-btn"
                   onClick={e => {
@@ -472,15 +537,78 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   }}>
                     {pl.title}
                   </span>
-                  <span style={{ fontSize: '12px', color: 'var(--text-subdued)' }}>
-                    Playlist • Spotify
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--text-subdued)' }}>
+                    {isPinned && (
+                      <Pin
+                        size={12}
+                        fill="#1ed760"
+                        color="#1ed760"
+                        style={{
+                          transform: 'rotate(-45deg)',
+                          flexShrink: 0
+                        }}
+                      />
+                    )}
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      Playlist • {pl.author || userProfile?.name || 'Spotify'}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
           );
         })}
       </div>
+
+      {/* Context Menu for Pin/Unpin */}
+      {contextMenu && (
+        <div
+          style={{
+            position: 'fixed',
+            top: Math.min(contextMenu.y, window.innerHeight - 80),
+            left: Math.min(contextMenu.x, window.innerWidth - 180),
+            backgroundColor: '#282828',
+            borderRadius: '4px',
+            padding: '4px',
+            boxShadow: '0 16px 24px rgba(0,0,0,0.6)',
+            zIndex: 9999,
+            minWidth: '170px'
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            onClick={() => {
+              if (onTogglePinPlaylist) onTogglePinPlaylist(contextMenu.playlist);
+              setContextMenu(null);
+            }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '10px 12px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderRadius: '2px',
+              color: '#ffffff',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              textAlign: 'left'
+            }}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+          >
+            <Pin
+              size={15}
+              fill={isItemPinned(contextMenu.playlist) ? '#1ed760' : 'none'}
+              color={isItemPinned(contextMenu.playlist) ? '#1ed760' : 'currentColor'}
+              style={{ transform: 'rotate(-45deg)' }}
+            />
+            {isItemPinned(contextMenu.playlist) ? 'Unpin playlist' : 'Pin playlist'}
+          </button>
+        </div>
+      )}
 
       {/* Import Modal */}
       {showImportModal && (

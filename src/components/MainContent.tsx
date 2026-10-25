@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, Heart, Clock, MoreHorizontal, ArrowDownCircle, Plus, Check, Shuffle } from 'lucide-react';
+import { Play, Pause, Heart, Clock, MoreHorizontal, ArrowDownCircle, Plus, Check, Shuffle, Pin } from 'lucide-react';
 import { Playlist, Track } from '../types';
 import { extractDominantColor, getFallbackPlaylistColor } from '../utils/colorExtractor';
 import { SpotifyUserProfile } from '../spotifyApi';
@@ -39,6 +39,8 @@ interface MainContentProps {
   onToggleSavePlaylist?: (playlist: Playlist) => void;
   isShuffle?: boolean;
   onToggleShuffle?: () => void;
+  isPlaylistPinned?: boolean;
+  onTogglePinPlaylist?: (playlist: Playlist) => void;
 }
 
 const formatDuration = (seconds: number) => {
@@ -70,7 +72,9 @@ export const MainContent: React.FC<MainContentProps> = ({
   isPlaylistSaved = false,
   onToggleSavePlaylist,
   isShuffle = false,
-  onToggleShuffle
+  onToggleShuffle,
+  isPlaylistPinned = false,
+  onTogglePinPlaylist
 }) => {
   const [activeChip, setActiveChip] = useState<'all' | 'music' | 'podcasts' | 'audiobooks'>('all');
   const [searchFilter, setSearchFilter] = useState<'all' | 'tracks' | 'playlists'>('all');
@@ -836,6 +840,43 @@ export const MainContent: React.FC<MainContentProps> = ({
               ) : (
                 <Plus size={18} strokeWidth={2.5} color="currentColor" />
               )}
+            </button>
+          )}
+
+          {/* Pin Playlist to Top of Library Button */}
+          {!isLikedView && (
+            <button
+              onClick={() => onTogglePinPlaylist && playlist && onTogglePinPlaylist(playlist)}
+              title={isPlaylistPinned ? "Unpin playlist from Your Library" : "Pin playlist to top of Your Library"}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: isPlaylistPinned ? '#1ed760' : 'var(--text-subdued)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4px',
+                flexShrink: 0,
+                transition: 'color 0.15s ease, transform 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.color = isPlaylistPinned ? '#1fdf64' : '#ffffff';
+                e.currentTarget.style.transform = 'scale(1.08)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = isPlaylistPinned ? '#1ed760' : 'var(--text-subdued)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              <Pin
+                size={26}
+                strokeWidth={2}
+                fill={isPlaylistPinned ? '#1ed760' : 'none'}
+                style={{
+                  transform: 'rotate(-45deg)'
+                }}
+              />
             </button>
           )}
 

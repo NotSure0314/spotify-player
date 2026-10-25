@@ -18,11 +18,14 @@ import {
   removeImportedPlaylist,
   getSavedLikedTrackIds,
   saveLikedTrackIds,
+  getSavedPinnedPlaylistIds,
+  savePinnedPlaylistIds,
   SpotifyUserProfile
 } from './spotifyApi';
 
 export function App() {
   const [playlists, setPlaylists] = useState<Playlist[]>(() => getSavedImportedPlaylists());
+  const [pinnedPlaylistIds, setPinnedPlaylistIds] = useState<string[]>(() => getSavedPinnedPlaylistIds());
   const [viewedPlaylist, setViewedPlaylist] = useState<Playlist | null>(null);
   const [currentView, setCurrentView] = useState<string>('home');
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
@@ -116,6 +119,11 @@ export function App() {
     saveLikedTrackIds(likedTrackIds);
   }, [likedTrackIds]);
 
+  // Sync pinned playlists to storage
+  useEffect(() => {
+    savePinnedPlaylistIds(pinnedPlaylistIds);
+  }, [pinnedPlaylistIds]);
+
   // 2. Initial Load: Sync User Playlists & Merge with Persisted Imported Playlists
   useEffect(() => {
     async function initUser() {
@@ -154,6 +162,19 @@ export function App() {
 
           setPlaylists(allPlaylists);
           setSelectedPlaylistId(prev => prev || allPlaylists[0]?.id || null);
+
+          // Default initial pinned playlists from real Spotify account if none saved yet
+          const savedPinned = getSavedPinnedPlaylistIds();
+          if (savedPinned.length === 0) {
+            const defaultPinnedNames = ['hello kitter', 'ultimate masculine white girl playlist', 'gym'];
+            const autoPinned = allPlaylists
+              .filter(p => defaultPinnedNames.some(name => p.title.toLowerCase().trim().includes(name)))
+              .map(p => p.id);
+            if (autoPinned.length > 0) {
+              setPinnedPlaylistIds(autoPinned);
+            }
+          }
+
           if (firstDetails?.tracks?.length && !currentTrack) {
             setCurrentTrack(firstDetails.tracks[0]);
           }
@@ -431,6 +452,53 @@ export function App() {
     } else {
       addImportedPlaylist(target);
       setPlaylists(prev => [target, ...prev.filter(p => p.id !== target.id)]);
+    }
+  };
+
+  // Check if currently viewed playlist is pinned
+  const isCurrentPlaylistPinned = Boolean(
+    selectedPlaylist && (
+      pinnedPlaylistIds.includes(selectedPlaylist.id) ||
+      (selectedPlaylist.playlistId && pinnedPlaylistIds.includes(selectedPlaylist.playlistId)) ||
+      pinnedPlaylistIds.some(pid => {
+        const cleanPid = pid.replace('spotify:playlist:', '').replace('spotify:album:', '');
+        const cleanSel = (selectedPlaylist.playlistId || selectedPlaylist.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+        return cleanPid === cleanSel;
+      })
+    )
+  );
+
+  // Toggle pinning/unpinning playlist to top of library
+  const handleTogglePinPlaylist = (targetPlaylist?: Playlist | null) => {
+    const target = targetPlaylist || selectedPlaylist;
+    if (!target) return;
+
+    const targetClean = (target.playlistId || target.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+    const isPinned = pinnedPlaylistIds.some(pid => {
+      const cleanPid = pid.replace('spotify:playlist:', '').replace('spotify:album:', '');
+      return pid === target.id || cleanPid === targetClean;
+    });
+
+    if (isPinned) {
+      setPinnedPlaylistIds(prev => prev.filter(pid => {
+        const cleanPid = pid.replace('spotify:playlist:', '').replace('spotify:album:', '');
+        return pid !== target.id && cleanPid !== targetClean;
+      }));
+    } else {
+      // Pin playlist: if not in library yet, also add to library
+      const isSaved = playlists.some(p => {
+        const pClean = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+        return p.id === target.id || pClean === targetClean;
+      });
+      if (!isSaved) {
+        addImportedPlaylist(target);
+        setPlaylists(prev => [target, ...prev.filter(p => p.id !== target.id)]);
+      }
+
+      setPinnedPlaylistIds(prev => [target.id, ...prev.filter(pid => {
+        const cleanPid = pid.replace('spotify:playlist:', '').replace('spotify:album:', '');
+        return pid !== target.id && cleanPid !== targetClean;
+      })]);
     }
   };
 
@@ -825,6 +893,9 @@ export function App() {
           onPlayPlaylist={pl => handlePlayPlaylistOrAlbum(pl, true)}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
+          pinnedPlaylistIds={pinnedPlaylistIds}
+          onTogglePinPlaylist={handleTogglePinPlaylist}
+          userProfile={userProfile}
         />
 
         {/* Center Main Viewport */}
@@ -876,6 +947,8 @@ export function App() {
             onToggleSavePlaylist={handleToggleSavePlaylist}
             isShuffle={isShuffle}
             onToggleShuffle={() => setIsShuffle(prev => !prev)}
+            isPlaylistPinned={isCurrentPlaylistPinned}
+            onTogglePinPlaylist={handleTogglePinPlaylist}
           />
         </main>
 

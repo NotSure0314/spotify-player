@@ -11,6 +11,7 @@ export interface SpotifyUserProfile {
 const STORAGE_KEY_USER = 'spotify_synced_user_profile';
 const STORAGE_KEY_IMPORTED_PLAYLISTS = 'spotify_imported_playlists';
 const STORAGE_KEY_LIKED_TRACKS = 'spotify_liked_tracks';
+const STORAGE_KEY_PINNED_PLAYLISTS = 'spotify_pinned_playlists';
 
 export function getSavedImportedPlaylists(): Playlist[] {
   try {
@@ -72,6 +73,23 @@ export function saveLikedTrackIds(ids: Set<string>) {
     localStorage.setItem(STORAGE_KEY_LIKED_TRACKS, JSON.stringify(Array.from(ids)));
   } catch (err) {
     console.error('Failed to save liked track IDs:', err);
+  }
+}
+
+export function getSavedPinnedPlaylistIds(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PINNED_PLAYLISTS);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function savePinnedPlaylistIds(ids: string[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY_PINNED_PLAYLISTS, JSON.stringify(ids));
+  } catch (err) {
+    console.error('Failed to save pinned playlist IDs:', err);
   }
 }
 
