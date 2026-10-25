@@ -47,7 +47,16 @@ export function App() {
   const [isSyncModalOpen, setIsSyncModalOpen] = useState<boolean>(false);
 
   // Player state
-  const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
+  const [currentTrack, setCurrentTrack] = useState<Track | null>(() => {
+    try {
+      const saved = localStorage.getItem('spotify_last_played_track');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.track || null;
+      }
+    } catch {}
+    return null;
+  });
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
   const [trackDuration, setTrackDuration] = useState<number>(0);
@@ -72,7 +81,16 @@ export function App() {
     id: string;
     title: string;
     tracks: Track[];
-  } | null>(null);
+  } | null>(() => {
+    try {
+      const saved = localStorage.getItem('spotify_last_played_track');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.playlistInfo || null;
+      }
+    } catch {}
+    return null;
+  });
 
   // Auxiliary panels (Now Playing View, Lyrics, Queue)
   const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(() => {
@@ -201,8 +219,19 @@ export function App() {
           const savedLiked = getSavedLikedTrackIds(result.user.id);
           setLikedTrackIds(savedLiked);
 
-          if (firstDetails?.tracks?.length && !currentTrack) {
+          if (firstDetails?.tracks?.length && !currentTrackRef.current) {
             setCurrentTrack(firstDetails.tracks[0]);
+            currentTrackRef.current = firstDetails.tracks[0];
+            const initialPl = allPlaylists[0];
+            if (initialPl) {
+              const info = {
+                id: initialPl.id,
+                title: initialPl.title,
+                tracks: firstDetails.tracks
+              };
+              setActivePlaybackPlaylist(info);
+              activePlaybackPlaylistRef.current = info;
+            }
           }
         } else if (savedImported.length > 0) {
           setPlaylists(savedImported);
@@ -853,6 +882,26 @@ export function App() {
       isPlayingRef.current = false;
     } else {
       if (currentTrackRef.current) {
+        // If the audio engine has not loaded this track yet (e.g. after a page reload/refresh),
+        // we must call handlePlayTrack to load the audio stream and play it!
+        const engineTrack = audioEngine.getCurrentTrack();
+        if (!audioEngine.hasLoadedTrack() || !engineTrack || engineTrack.id !== currentTrackRef.current.id) {
+          const activeTracks = activePlaybackPlaylistRef.current?.tracks?.length
+            ? activePlaybackPlaylistRef.current.tracks
+            : (selectedPlaylistRef.current?.tracks?.length
+                ? selectedPlaylistRef.current.tracks
+                : (playlists.length > 0 && playlists[0].tracks?.length ? playlists[0].tracks : allTracksRef.current));
+
+          const playlistInfo = activePlaybackPlaylistRef.current
+            ? { id: activePlaybackPlaylistRef.current.id, title: activePlaybackPlaylistRef.current.title }
+            : (selectedPlaylistRef.current
+                ? { id: selectedPlaylistRef.current.id, title: selectedPlaylistRef.current.title }
+                : (playlists.length > 0 ? { id: playlists[0].id, title: playlists[0].title } : undefined));
+
+          handlePlayTrack(currentTrackRef.current, activeTracks, playlistInfo, true);
+          return;
+        }
+
         // If resuming with shuffle enabled, make sure queue is populated
         if (isShuffleRef.current && shuffledQueueRef.current.length === 0) {
           const targetPlaylist = selectedPlaylistRef.current;
@@ -982,6 +1031,17 @@ export function App() {
     setIsPlaying(true);
     isPlayingRef.current = true;
     audioEngine.playTrack(track);
+
+    try {
+      localStorage.setItem('spotify_last_played_track', JSON.stringify({
+        track,
+        playlistInfo: {
+          id: playlistInfo?.id || selectedPlaylistId || 'playlist',
+          title: playlistInfo?.title || selectedPlaylist?.title || 'Playlist',
+          tracks: (contextTracks && contextTracks.length > 0) ? contextTracks.slice(0, 500) : []
+        }
+      }));
+    } catch {}
   };
 
   const handleNext = () => {

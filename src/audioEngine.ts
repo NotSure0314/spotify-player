@@ -211,16 +211,31 @@ class AudioPlayerEngine {
     }
   }
 
-  resume() {
+  getCurrentTrack(): Track | null {
+    return this.currentTrack;
+  }
+
+  hasLoadedTrack(): boolean {
+    return this.currentTrack !== null;
+  }
+
+  resume(): boolean {
+    if (!this.currentTrack) {
+      this.isPlaying = false;
+      return false;
+    }
     this.isPlaying = true;
     if (this.activeMode === 'yt' && this.ytPlayer && typeof this.ytPlayer.playVideo === 'function') {
       try {
         this.ytPlayer.playVideo();
         this.startTimeTicker();
+        return true;
       } catch {}
     } else if (this.currentTrack?.audioUrl) {
       this.audio.play().catch(() => {});
+      return true;
     }
+    return false;
   }
 
   stop() {
