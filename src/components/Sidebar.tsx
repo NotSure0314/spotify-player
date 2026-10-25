@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Library, Plus, ArrowLeft, Heart, Search, ListFilter, Download, Pin } from 'lucide-react';
+import { Library, Plus, ArrowLeft, Heart, Search, ListFilter, Download } from 'lucide-react';
 import { Playlist } from '../types';
 import { SpotifyUserProfile } from '../spotifyApi';
 import { getHighResImageUrl } from '../utils/imageUtils';
-import { SpotifyPlayIcon } from './SpotifyIcons';
+import { SpotifyPlayIcon, SpotifyPinIcon } from './SpotifyIcons';
 
 interface SidebarProps {
   currentView: string;
@@ -493,7 +493,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       justifyContent: 'center'
                     }}
                   >
-                    <Pin size={8} fill="#1ed760" color="#1ed760" style={{ transform: 'rotate(-45deg)' }} />
+                    <SpotifyPinIcon size={8} fill="#1ed760" />
                   </div>
                 )}
                 <button
@@ -541,12 +541,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--text-subdued)' }}>
                     {isPinned && (
-                      <Pin
+                      <SpotifyPinIcon
                         size={12}
                         fill="#1ed760"
-                        color="#1ed760"
                         style={{
-                          transform: 'rotate(-45deg)',
                           flexShrink: 0
                         }}
                       />
@@ -601,11 +599,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
             onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
           >
-            <Pin
+            <SpotifyPinIcon
               size={15}
               fill={isItemPinned(contextMenu.playlist) ? '#1ed760' : 'none'}
               color={isItemPinned(contextMenu.playlist) ? '#1ed760' : 'currentColor'}
-              style={{ transform: 'rotate(-45deg)' }}
+              filled={isItemPinned(contextMenu.playlist)}
             />
             {isItemPinned(contextMenu.playlist) ? 'Unpin playlist' : 'Pin playlist'}
           </button>

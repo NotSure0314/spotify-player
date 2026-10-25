@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Clock, MoreHorizontal, ArrowDownCircle, Plus, Check, Shuffle, Pin } from 'lucide-react';
+import { Heart, Clock, MoreHorizontal, ArrowDownCircle, Plus, Check, Shuffle } from 'lucide-react';
 import { Playlist, Track } from '../types';
 import { extractDominantColor, getFallbackPlaylistColor, darkenColor } from '../utils/colorExtractor';
 import { SpotifyUserProfile } from '../spotifyApi';
 import { getHighResImageUrl } from '../utils/imageUtils';
-import { SpotifyPlayIcon, SpotifyPauseIcon } from './SpotifyIcons';
+import { SpotifyPlayIcon, SpotifyPauseIcon, SpotifyPinIcon } from './SpotifyIcons';
 import {
   HomeCardItem,
   QUICK_ACCESS_ITEMS,
@@ -872,13 +872,12 @@ export const MainContent: React.FC<MainContentProps> = ({
                 e.currentTarget.style.transform = 'scale(1)';
               }}
             >
-              <Pin
+              <SpotifyPinIcon
                 size={26}
                 strokeWidth={2}
                 fill={isPlaylistPinned ? '#1ed760' : 'none'}
-                style={{
-                  transform: 'rotate(-45deg)'
-                }}
+                color={isPlaylistPinned ? '#1ed760' : 'currentColor'}
+                filled={isPlaylistPinned}
               />
             </button>
           )}
