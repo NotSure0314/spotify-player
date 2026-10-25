@@ -610,7 +610,10 @@ export const MainContent: React.FC<MainContentProps> = ({
                   if (isMatch) {
                     onTogglePlay();
                   } else {
-                    onPlayTrack(playlist.tracks[0], playlist.tracks, { id: playlist.id, title: playlist.title });
+                    const startTrack = isShuffle
+                      ? playlist.tracks[Math.floor(Math.random() * playlist.tracks.length)]
+                      : playlist.tracks[0];
+                    onPlayTrack(startTrack, playlist.tracks, { id: playlist.id, title: playlist.title });
                   }
                 }
               }}
@@ -732,7 +735,10 @@ export const MainContent: React.FC<MainContentProps> = ({
                 if (isMatch) {
                   onTogglePlay();
                 } else {
-                  onPlayTrack(playlist.tracks[0], playlist.tracks, { id: playlist.id, title: playlist.title });
+                  const startTrack = isShuffle
+                    ? playlist.tracks[Math.floor(Math.random() * playlist.tracks.length)]
+                    : playlist.tracks[0];
+                  onPlayTrack(startTrack, playlist.tracks, { id: playlist.id, title: playlist.title });
                 }
               }
             }}
