@@ -258,7 +258,7 @@ export function App() {
     setSelectedPlaylistId(playlist.id);
     setCurrentView('playlist');
 
-    if (!target.tracks || target.tracks.length === 0 || target.tracks.length === 100) {
+    if (!target.tracks || target.tracks.length === 0 || target.tracks.length < 5000) {
       const details = await fetchLivePlaylistDetails(playlist.id);
       if (details && details.tracks.length > (target.tracks?.length || 0)) {
         const fullPlaylist: Playlist = {
@@ -514,7 +514,7 @@ export function App() {
         ? playlists.find(p => p.id === selectedPlaylistId || p.playlistId === selectedPlaylistId)
         : (viewedPlaylist && (viewedPlaylist.id === selectedPlaylistId || viewedPlaylist.playlistId === selectedPlaylistId) ? viewedPlaylist : null);
 
-      if (!currentPl || currentPl.tracks.length === 0 || currentPl.tracks.length === 100) {
+      if (!currentPl || currentPl.tracks.length === 0 || currentPl.tracks.length < 5000) {
         fetchLivePlaylistDetails(selectedPlaylistId).then(details => {
           if (details && details.tracks.length > (currentPl?.tracks?.length || 0)) {
             const fullPlaylist: Playlist = {

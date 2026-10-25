@@ -74,7 +74,7 @@ export default async function handler(req: any, res: any) {
       }
     } catch {}
 
-    const { stdout } = await execAsync(`"${CLI_PATH}" playlist get "${fullUri}" --format json`, { timeout: 6000 });
+    const { stdout } = await execAsync(`"${CLI_PATH}" playlist get "${fullUri}" --limit 5000 --format json`, { timeout: 15000 });
     const plData = JSON.parse(stdout);
     if (plData.tracks && plData.tracks.length > 0) {
       // Trim Spotify desktop client's auto-appended recommendations
@@ -87,8 +87,8 @@ export default async function handler(req: any, res: any) {
 
       // Lookup artwork for all genuine tracks
       const trackUris = plData.tracks.map((t: any) => t.uri).filter(Boolean);
-      const batchSize = 40;
-      for (let i = 0; i < trackUris.length; i += batchSize) {
+      const batchSize = 50;
+      for (let i = 0; i < Math.min(trackUris.length, 5000); i += batchSize) {
         const batch = trackUris.slice(i, i + batchSize);
         const missingFromCache = batch.filter((u: string) => !globalCoverCache.has(u));
         if (missingFromCache.length > 0) {
