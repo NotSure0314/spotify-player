@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, Heart, Clock, MoreHorizontal, ArrowDownCircle } from 'lucide-react';
+import { Play, Pause, Heart, Clock, MoreHorizontal, ArrowDownCircle, Plus, Check, Shuffle } from 'lucide-react';
 import { Playlist, Track } from '../types';
 import { extractDominantColor, getFallbackPlaylistColor } from '../utils/colorExtractor';
 import { SpotifyUserProfile } from '../spotifyApi';
@@ -35,6 +35,10 @@ interface MainContentProps {
   isSearching: boolean;
   allTracks: Track[];
   userProfile?: SpotifyUserProfile | null;
+  isPlaylistSaved?: boolean;
+  onToggleSavePlaylist?: (playlist: Playlist) => void;
+  isShuffle?: boolean;
+  onToggleShuffle?: () => void;
 }
 
 const formatDuration = (seconds: number) => {
@@ -62,7 +66,11 @@ export const MainContent: React.FC<MainContentProps> = ({
   onSelectSearchCategory,
   isSearching,
   allTracks,
-  userProfile
+  userProfile,
+  isPlaylistSaved = false,
+  onToggleSavePlaylist,
+  isShuffle = false,
+  onToggleShuffle
 }) => {
   const [activeChip, setActiveChip] = useState<'all' | 'music' | 'podcasts' | 'audiobooks'>('all');
   const [searchFilter, setSearchFilter] = useState<'all' | 'tracks' | 'playlists'>('all');
@@ -755,20 +763,81 @@ export const MainContent: React.FC<MainContentProps> = ({
             )}
           </button>
 
+          {/* Shuffle Button */}
           <button
-            title="Save to Your Library"
+            onClick={onToggleShuffle}
+            title={isShuffle ? "Disable shuffle" : "Enable shuffle"}
             style={{
               background: 'none',
               border: 'none',
-              color: 'var(--text-subdued)',
+              color: isShuffle ? '#1ed760' : 'var(--text-subdued)',
               cursor: 'pointer',
-              display: 'flex'
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+              transition: 'color 0.15s ease, transform 0.15s ease'
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
+            onMouseEnter={e => {
+              if (!isShuffle) e.currentTarget.style.color = '#ffffff';
+              e.currentTarget.style.transform = 'scale(1.06)';
+            }}
+            onMouseLeave={e => {
+              if (!isShuffle) e.currentTarget.style.color = 'var(--text-subdued)';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
           >
-            <Heart size={30} />
+            <Shuffle size={26} strokeWidth={2.2} />
           </button>
+
+          {/* Plus / Check Save to Library Button */}
+          {!isLikedView && (
+            <button
+              onClick={() => onToggleSavePlaylist && playlist && onToggleSavePlaylist(playlist)}
+              title={isPlaylistSaved ? "Remove from Your Library" : "Save to Your Library"}
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                border: isPlaylistSaved ? 'none' : '2px solid rgba(255, 255, 255, 0.7)',
+                backgroundColor: isPlaylistSaved ? '#1ed760' : 'transparent',
+                color: isPlaylistSaved ? '#000000' : 'rgba(255, 255, 255, 0.7)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                padding: 0,
+                flexShrink: 0,
+                transition: 'transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                if (isPlaylistSaved) {
+                  e.currentTarget.style.backgroundColor = '#1fdf64';
+                  e.currentTarget.style.transform = 'scale(1.06)';
+                } else {
+                  e.currentTarget.style.borderColor = '#ffffff';
+                  e.currentTarget.style.color = '#ffffff';
+                  e.currentTarget.style.transform = 'scale(1.06)';
+                }
+              }}
+              onMouseLeave={e => {
+                if (isPlaylistSaved) {
+                  e.currentTarget.style.backgroundColor = '#1ed760';
+                  e.currentTarget.style.transform = 'scale(1)';
+                } else {
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.7)';
+                  e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }
+              }}
+            >
+              {isPlaylistSaved ? (
+                <Check size={18} strokeWidth={3} color="#000000" />
+              ) : (
+                <Plus size={18} strokeWidth={2.5} color="currentColor" />
+              )}
+            </button>
+          )}
 
           <button
             title="Download"
@@ -777,12 +846,22 @@ export const MainContent: React.FC<MainContentProps> = ({
               border: 'none',
               color: 'var(--text-subdued)',
               cursor: 'pointer',
-              display: 'flex'
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+              transition: 'color 0.15s ease, transform 0.15s ease'
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = '#ffffff';
+              e.currentTarget.style.transform = 'scale(1.06)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = 'var(--text-subdued)';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
           >
-            <ArrowDownCircle size={30} />
+            <ArrowDownCircle size={32} strokeWidth={1.8} />
           </button>
 
           <button
@@ -792,10 +871,20 @@ export const MainContent: React.FC<MainContentProps> = ({
               border: 'none',
               color: 'var(--text-subdued)',
               cursor: 'pointer',
-              display: 'flex'
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+              transition: 'color 0.15s ease, transform 0.15s ease'
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = '#ffffff';
+              e.currentTarget.style.transform = 'scale(1.06)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = 'var(--text-subdued)';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
           >
             <MoreHorizontal size={30} />
           </button>

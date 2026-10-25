@@ -15,6 +15,7 @@ import {
   getSavedUserProfile,
   getSavedImportedPlaylists,
   addImportedPlaylist,
+  removeImportedPlaylist,
   getSavedLikedTrackIds,
   saveLikedTrackIds,
   SpotifyUserProfile
@@ -22,6 +23,7 @@ import {
 
 export function App() {
   const [playlists, setPlaylists] = useState<Playlist[]>(() => getSavedImportedPlaylists());
+  const [viewedPlaylist, setViewedPlaylist] = useState<Playlist | null>(null);
   const [currentView, setCurrentView] = useState<string>('home');
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -222,37 +224,38 @@ export function App() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Handle selecting or playing a searched playlist (Persisted across reloads)
+  // Handle selecting or playing a searched playlist
   const handleSelectSearchPlaylist = async (playlist: Playlist, autoPlay: boolean = false) => {
-    let target = playlists.find(p => p.id === playlist.id);
-    if (!target) {
-      addImportedPlaylist(playlist);
-      setPlaylists(prev => [playlist, ...prev]);
-      target = playlist;
-    }
+    const isLibraryPl = playlists.some(p => p.id === playlist.id || (p.playlistId && p.playlistId === playlist.playlistId));
+    let target = playlists.find(p => p.id === playlist.id || (p.playlistId && p.playlistId === playlist.playlistId)) || playlist;
 
+    setViewedPlaylist(target);
     setSelectedPlaylistId(playlist.id);
     setCurrentView('playlist');
 
     if (!target.tracks || target.tracks.length === 0 || target.tracks.length === 100) {
       const details = await fetchLivePlaylistDetails(playlist.id);
       if (details && details.tracks.length > (target.tracks?.length || 0)) {
-        const fullPlaylist = {
+        const fullPlaylist: Playlist = {
           ...target,
           tracks: details.tracks,
           coverUrl: details.coverUrl || target.coverUrl,
           description: details.description || target.description,
           gradient: details.gradient || target.gradient
         };
-        addImportedPlaylist(fullPlaylist);
-        setPlaylists(prev =>
-          prev.map(p =>
-            p.id === playlist.id ? fullPlaylist : p
-          )
-        );
+        setViewedPlaylist(fullPlaylist);
+        if (isLibraryPl) {
+          addImportedPlaylist(fullPlaylist);
+          setPlaylists(prev =>
+            prev.map(p =>
+              p.id === playlist.id ? fullPlaylist : p
+            )
+          );
+        }
         if (autoPlay) {
           handlePlayTrack(details.tracks[0], details.tracks, { id: fullPlaylist.id, title: fullPlaylist.title });
         }
+        return;
       }
     } else if (autoPlay && target.tracks.length > 0) {
       handlePlayTrack(target.tracks[0], target.tracks, { id: target.id, title: target.title });
@@ -267,11 +270,12 @@ export function App() {
     const targetUri = item.spotifyUri || item.id || '';
     const itemTitle = (item.title || '').toLowerCase().trim();
     let matched = playlists.find(p =>
-      (targetUri && (p.id === targetUri || p.playlistId === targetUri.replace('spotify:playlist:', ''))) ||
+      (targetUri && (p.id === targetUri || p.playlistId === targetUri.replace('spotify:playlist:', '').replace('spotify:album:', ''))) ||
       (itemTitle && p.title.toLowerCase().trim() === itemTitle)
     );
 
     if (matched) {
+      setViewedPlaylist(matched);
       setSelectedPlaylistId(matched.id);
       setCurrentView('playlist');
       if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
@@ -295,6 +299,7 @@ export function App() {
         };
         addImportedPlaylist(fullPlaylist);
         setPlaylists(prev => prev.map(p => (p.id === matched!.id ? fullPlaylist : p)));
+        setViewedPlaylist(fullPlaylist);
         if (autoPlay) {
           handlePlayTrack(details.tracks[0], details.tracks, { id: fullPlaylist.id, title: fullPlaylist.title });
         }
@@ -302,13 +307,26 @@ export function App() {
       return;
     }
 
-    // If not currently in user's loaded playlists:
+    // Check if it's already in viewedPlaylist and matches:
+    if (viewedPlaylist && (
+      (targetUri && (viewedPlaylist.id === targetUri || viewedPlaylist.playlistId === targetUri.replace('spotify:playlist:', '').replace('spotify:album:', ''))) ||
+      (itemTitle && viewedPlaylist.title.toLowerCase().trim() === itemTitle)
+    )) {
+      setSelectedPlaylistId(viewedPlaylist.id);
+      setCurrentView('playlist');
+      if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
+      if (autoPlay && viewedPlaylist.tracks && viewedPlaylist.tracks.length > 0) {
+        handlePlayTrack(viewedPlaylist.tracks[0], viewedPlaylist.tracks, { id: viewedPlaylist.id, title: viewedPlaylist.title });
+      }
+      return;
+    }
+
+    // If not currently in user's loaded library playlists:
     // 1. Try direct fetch by item.spotifyUri if provided
     if (item.spotifyUri) {
       const details = await fetchLivePlaylistDetails(item.spotifyUri);
       if (details && details.tracks.length > 0) {
-        addImportedPlaylist(details);
-        setPlaylists(prev => [details, ...prev.filter(p => p.id !== details.id)]);
+        setViewedPlaylist(details);
         setSelectedPlaylistId(details.id);
         setCurrentView('playlist');
         if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
@@ -335,8 +353,7 @@ export function App() {
         const foundPl = searchRes.playlists[0];
         const details = await fetchLivePlaylistDetails(foundPl.id);
         if (details && details.tracks.length > 0) {
-          addImportedPlaylist(details);
-          setPlaylists(prev => [details, ...prev.filter(p => p.id !== details.id)]);
+          setViewedPlaylist(details);
           setSelectedPlaylistId(details.id);
           setCurrentView('playlist');
           if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
@@ -357,8 +374,7 @@ export function App() {
           gradient: '#1e3a8a',
           tracks: searchRes.tracks
         };
-        addImportedPlaylist(albumPlaylist);
-        setPlaylists(prev => [albumPlaylist, ...prev]);
+        setViewedPlaylist(albumPlaylist);
         setSelectedPlaylistId(albumPlaylist.id);
         setCurrentView('playlist');
         if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
@@ -371,12 +387,61 @@ export function App() {
   };
 
   // Selected playlist object
-  const selectedPlaylist = playlists.find(p => p.id === selectedPlaylistId) || playlists[0] || null;
+  const selectedPlaylist =
+    playlists.find(p => p.id === selectedPlaylistId || p.playlistId === selectedPlaylistId) ||
+    (viewedPlaylist && (viewedPlaylist.id === selectedPlaylistId || viewedPlaylist.playlistId === selectedPlaylistId) ? viewedPlaylist : null) ||
+    viewedPlaylist ||
+    playlists[0] ||
+    null;
+
+  // Check if currently viewed playlist is saved in user's library
+  const isCurrentPlaylistSaved = Boolean(
+    selectedPlaylist && playlists.some(p => {
+      if (p.id === selectedPlaylist.id) return true;
+      if (p.playlistId && (p.playlistId === selectedPlaylist.playlistId || p.playlistId === selectedPlaylist.id)) return true;
+      if (selectedPlaylist.playlistId && p.id === selectedPlaylist.playlistId) return true;
+      const cleanP = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+      const cleanSel = (selectedPlaylist.playlistId || selectedPlaylist.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+      return cleanP === cleanSel;
+    })
+  );
+
+  // Toggle saving/unsaving playlist to library
+  const handleToggleSavePlaylist = (targetPlaylist?: Playlist | null) => {
+    const target = targetPlaylist || selectedPlaylist;
+    if (!target) return;
+
+    const targetClean = (target.playlistId || target.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+    const isSaved = playlists.some(p => {
+      if (p.id === target.id) return true;
+      if (p.playlistId && (p.playlistId === target.playlistId || p.playlistId === target.id)) return true;
+      const cleanP = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+      return cleanP === targetClean;
+    });
+
+    if (isSaved) {
+      setPlaylists(prev => prev.filter(p => {
+        const cleanP = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+        return p.id !== target.id && cleanP !== targetClean;
+      }));
+      removeImportedPlaylist(target.id);
+      if (target.playlistId) {
+        removeImportedPlaylist(target.playlistId);
+      }
+    } else {
+      addImportedPlaylist(target);
+      setPlaylists(prev => [target, ...prev.filter(p => p.id !== target.id)]);
+    }
+  };
 
   // If selecting a playlist without loaded tracks or capped at 100, fetch full tracklist
   useEffect(() => {
     if (selectedPlaylistId) {
-      const currentPl = playlists.find(p => p.id === selectedPlaylistId);
+      const isLibraryPl = playlists.some(p => p.id === selectedPlaylistId || p.playlistId === selectedPlaylistId);
+      const currentPl = isLibraryPl
+        ? playlists.find(p => p.id === selectedPlaylistId || p.playlistId === selectedPlaylistId)
+        : (viewedPlaylist && (viewedPlaylist.id === selectedPlaylistId || viewedPlaylist.playlistId === selectedPlaylistId) ? viewedPlaylist : null);
+
       if (!currentPl || currentPl.tracks.length === 0 || currentPl.tracks.length === 100) {
         fetchLivePlaylistDetails(selectedPlaylistId).then(details => {
           if (details && details.tracks.length > (currentPl?.tracks?.length || 0)) {
@@ -387,10 +452,13 @@ export function App() {
               description: details.description || currentPl?.description || 'Spotify Playlist',
               gradient: details.gradient || currentPl?.gradient || '#1e3a8a'
             };
-            addImportedPlaylist(fullPlaylist);
-            setPlaylists(prev =>
-              prev.map(p => (p.id === selectedPlaylistId ? fullPlaylist : p))
-            );
+            if (isLibraryPl) {
+              addImportedPlaylist(fullPlaylist);
+              setPlaylists(prev =>
+                prev.map(p => (p.id === selectedPlaylistId || p.playlistId === selectedPlaylistId ? fullPlaylist : p))
+              );
+            }
+            setViewedPlaylist(fullPlaylist);
           }
         });
       }
@@ -707,6 +775,10 @@ export function App() {
   const handleSelectView = (view: string, playlistId?: string) => {
     if (playlistId) {
       setSelectedPlaylistId(playlistId);
+      const match = playlists.find(p => p.id === playlistId || p.playlistId === playlistId);
+      if (match) {
+        setViewedPlaylist(match);
+      }
     }
     setCurrentView(view);
     if (mainScrollRef.current) {
@@ -800,6 +872,10 @@ export function App() {
             isSearching={isSearching}
             allTracks={allTracks}
             userProfile={userProfile}
+            isPlaylistSaved={isCurrentPlaylistSaved}
+            onToggleSavePlaylist={handleToggleSavePlaylist}
+            isShuffle={isShuffle}
+            onToggleShuffle={() => setIsShuffle(prev => !prev)}
           />
         </main>
 

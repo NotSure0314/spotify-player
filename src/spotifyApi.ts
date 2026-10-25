@@ -32,11 +32,29 @@ export function saveImportedPlaylists(playlists: Playlist[]) {
 export function addImportedPlaylist(playlist: Playlist) {
   try {
     const existing = getSavedImportedPlaylists();
-    const filtered = existing.filter(p => p.id !== playlist.id && p.playlistId !== playlist.playlistId);
+    const cleanId = (playlist.playlistId || playlist.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+    const filtered = existing.filter(p => {
+      const pClean = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+      return p.id !== playlist.id && pClean !== cleanId;
+    });
     const updated = [playlist, ...filtered];
     saveImportedPlaylists(updated);
   } catch (err) {
     console.error('Failed to add imported playlist:', err);
+  }
+}
+
+export function removeImportedPlaylist(playlistId: string) {
+  try {
+    const existing = getSavedImportedPlaylists();
+    const cleanId = playlistId.replace('spotify:playlist:', '').replace('spotify:album:', '');
+    const updated = existing.filter(p => {
+      const pClean = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+      return p.id !== playlistId && pClean !== cleanId;
+    });
+    saveImportedPlaylists(updated);
+  } catch (err) {
+    console.error('Failed to remove imported playlist:', err);
   }
 }
 
