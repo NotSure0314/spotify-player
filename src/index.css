@@ -282,3 +282,33 @@ body {
   }
 }
 
+/* 6. Shuffle Buttons */
+.spotify-shuffle-btn {
+  background: none;
+  border: none;
+  color: var(--text-subdued);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 0;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.spotify-shuffle-btn:hover {
+  color: #ffffff;
+  transform: scale(1.08);
+}
+
+.spotify-shuffle-btn.active {
+  color: #1ed760;
+}
+
+.spotify-shuffle-btn.active:hover {
+  color: #1fdf64;
+  transform: scale(1.08);
+}
+
+

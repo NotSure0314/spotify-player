@@ -833,25 +833,26 @@ export function App() {
       localStorage.setItem('spotify_player_shuffle', nextShuffle ? 'true' : 'false');
     } catch {}
 
-    const targetPlaylist = contextPlaylist || selectedPlaylistRef.current;
-    const activeTracks = activePlaybackPlaylistRef.current?.tracks?.length
+    const targetPlaylist = contextPlaylist || selectedPlaylistRef.current || (playlists.length > 0 ? playlists[0] : null);
+    const activeTracks = (activePlaybackPlaylistRef.current?.tracks?.length
       ? activePlaybackPlaylistRef.current.tracks
-      : (targetPlaylist?.tracks?.length ? targetPlaylist.tracks : allTracksRef.current);
+      : targetPlaylist?.tracks) || allTracksRef.current;
 
     if (nextShuffle) {
-      // If triggered from a playlist action row and we're not currently playing this playlist,
-      // start playing immediately in shuffle mode (Spotify Shuffle Play)!
-      if (
-        contextPlaylist &&
-        contextPlaylist.tracks.length > 0 &&
-        (!isPlayingRef.current || activePlaybackPlaylistRef.current?.id !== contextPlaylist.id)
-      ) {
-        const randomStart = contextPlaylist.tracks[Math.floor(Math.random() * contextPlaylist.tracks.length)];
-        handlePlayTrack(randomStart, contextPlaylist.tracks, { id: contextPlaylist.id, title: contextPlaylist.title });
+      // If nothing is playing yet, start playback in shuffle mode immediately!
+      // This applies seamlessly whether clicked from the playlist header OR the bottom player bar!
+      if (!isPlayingRef.current && activeTracks && activeTracks.length > 0) {
+        const randomStart = activeTracks[Math.floor(Math.random() * activeTracks.length)];
+        const playlistInfo = contextPlaylist
+          ? { id: contextPlaylist.id, title: contextPlaylist.title }
+          : (activePlaybackPlaylistRef.current?.id
+              ? { id: activePlaybackPlaylistRef.current.id, title: activePlaybackPlaylistRef.current.title }
+              : (targetPlaylist ? { id: targetPlaylist.id, title: targetPlaylist.title } : undefined));
+        handlePlayTrack(randomStart, activeTracks, playlistInfo, false);
         return;
       }
 
-      // Otherwise populate/reshuffle upcoming queue
+      // If already playing, immediately populate / reshuffle upcoming queue from active tracks
       if (activeTracks && activeTracks.length > 0) {
         const current = currentTrackRef.current;
         const remaining = current
@@ -898,7 +899,12 @@ export function App() {
                 ? { id: selectedPlaylistRef.current.id, title: selectedPlaylistRef.current.title }
                 : (playlists.length > 0 ? { id: playlists[0].id, title: playlists[0].title } : undefined));
 
-          handlePlayTrack(currentTrackRef.current, activeTracks, playlistInfo, true);
+          // If starting playback fresh with shuffle ON, pick a random track!
+          const trackToPlay = (isShuffleRef.current && activeTracks && activeTracks.length > 0)
+            ? activeTracks[Math.floor(Math.random() * activeTracks.length)]
+            : currentTrackRef.current;
+
+          handlePlayTrack(trackToPlay, activeTracks, playlistInfo, false);
           return;
         }
 

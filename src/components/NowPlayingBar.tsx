@@ -209,22 +209,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
           <button
             onClick={onToggleShuffle}
             title={isShuffle ? 'Disable shuffle' : 'Enable shuffle'}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: isShuffle ? '#1ed760' : 'var(--text-subdued)',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              position: 'relative'
-            }}
-            onMouseEnter={e => {
-              if (!isShuffle) e.currentTarget.style.color = '#ffffff';
-            }}
-            onMouseLeave={e => {
-              if (!isShuffle) e.currentTarget.style.color = 'var(--text-subdued)';
-            }}
+            className={`spotify-shuffle-btn ${isShuffle ? 'active' : ''}`}
           >
             <Shuffle size={16} />
             {isShuffle && (

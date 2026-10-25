@@ -744,7 +744,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                     (t.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase() &&
                      t.artist.trim().toLowerCase() === currentTrack.artist.trim().toLowerCase())
                   );
-                  if (isMatch) {
+                  if (isPlaying && isMatch) {
                     onTogglePlay();
                   } else {
                     const startTrack = isShuffle
@@ -900,7 +900,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   (t.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase() &&
                    t.artist.trim().toLowerCase() === currentTrack.artist.trim().toLowerCase())
                 );
-                if (isMatch) {
+                if (isPlaying && isMatch) {
                   onTogglePlay();
                 } else {
                   const startTrack = isShuffle
@@ -947,27 +947,10 @@ export const MainContent: React.FC<MainContentProps> = ({
           {/* Shuffle Button */}
           <button
             onClick={() => onToggleShuffle && onToggleShuffle(playlist)}
-            title={isShuffle ? "Disable shuffle" : "Shuffle play"}
+            title={isShuffle ? "Disable shuffle" : "Enable shuffle"}
+            className={`spotify-shuffle-btn ${isShuffle ? 'active' : ''}`}
             style={{
-              background: 'none',
-              border: 'none',
-              color: isShuffle ? '#1ed760' : 'var(--text-subdued)',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'relative',
-              padding: '4px',
-              transition: 'color 0.15s ease, transform 0.15s ease'
-            }}
-            onMouseEnter={e => {
-              if (!isShuffle) e.currentTarget.style.color = '#ffffff';
-              e.currentTarget.style.transform = 'scale(1.08)';
-            }}
-            onMouseLeave={e => {
-              if (!isShuffle) e.currentTarget.style.color = 'var(--text-subdued)';
-              e.currentTarget.style.transform = 'scale(1)';
+              padding: '4px'
             }}
           >
             <Shuffle size={26} strokeWidth={2.2} />
