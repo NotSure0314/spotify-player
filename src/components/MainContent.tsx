@@ -1083,7 +1083,7 @@ export const MainContent: React.FC<MainContentProps> = ({
         {QUICK_ACCESS_ITEMS.map((item, index) => {
           // If there is an existing loaded playlist matching title, link to it
           const matched = playlists.find(p => p.title.toLowerCase().trim() === item.title.toLowerCase().trim());
-          const displayImage = matched?.coverUrl || item.image;
+          const displayImage = item.image || matched?.coverUrl || '';
           const displayTitle = matched?.title || item.title;
 
           return (
@@ -1118,11 +1118,31 @@ export const MainContent: React.FC<MainContentProps> = ({
                 }
               }}
             >
-              <img
-                src={displayImage}
-                alt={displayTitle}
-                style={{ width: '48px', height: '48px', objectFit: 'cover', flexShrink: 0 }}
-              />
+              <div style={{
+                width: '48px',
+                height: '48px',
+                minWidth: '48px',
+                minHeight: '48px',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: '#282828',
+                borderRadius: '4px 0 0 4px',
+                flexShrink: 0
+              }}>
+                <img
+                  src={displayImage}
+                  alt={displayTitle}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                    display: 'block'
+                  }}
+                />
+              </div>
               <span style={{
                 fontSize: '13px',
                 fontWeight: 700,

@@ -18,7 +18,7 @@ export const QUICK_ACCESS_ITEMS: HomeCardItem[] = [
     id: 'hello-kitter',
     title: 'Hello Kitter',
     subtitle: 'Playlist • Shreeji',
-    image: '/covers/quick-hello-kitter.png',
+    image: 'https://image-cdn-fa.spotifycdn.com/image/ab67706c0000da84c0835a7462cbc57696426e97',
     type: 'playlist',
     spotifyUri: 'spotify:playlist:5k3iI5fE68jr4UdX2UG6NN'
   },
@@ -26,7 +26,7 @@ export const QUICK_ACCESS_ITEMS: HomeCardItem[] = [
     id: 'gym',
     title: 'Gym',
     subtitle: 'Playlist • Shreeji',
-    image: '/covers/quick-gym.png',
+    image: 'https://image-cdn-ak.spotifycdn.com/image/ab67706c0000d72cc1277cc06401a3f12819c5ab',
     type: 'playlist',
     spotifyUri: 'spotify:playlist:0rPcNgfcMCzc8Z8rStIvBR'
   },
@@ -34,7 +34,7 @@ export const QUICK_ACCESS_ITEMS: HomeCardItem[] = [
     id: 'peak-kanye',
     title: 'Peak Kanye',
     subtitle: 'Playlist • Rory',
-    image: '/covers/quick-peak-kanye.png',
+    image: 'https://mosaic.scdn.co/640/ab67616d00001e020cd942c1a864afa4e92d04f2ab67616d00001e021dacfbc31cc873d132958af9ab67616d00001e0226f7f19c7f0381e56156c94aab67616d00001e02d9194aa18fa4c9362b47464f',
     type: 'playlist',
     spotifyUri: 'spotify:playlist:6Fs9lBMpHdqjvQ6wCPDnKc'
   },
@@ -42,7 +42,7 @@ export const QUICK_ACCESS_ITEMS: HomeCardItem[] = [
     id: 'enter-sandman',
     title: 'Enter Sandman',
     subtitle: 'Playlist • Dick',
-    image: '/covers/quick-enter-sandman.png',
+    image: 'https://i.scdn.co/image/ab67616d00001e02aeef6d1f525548aabcea0f6e',
     type: 'playlist',
     spotifyUri: 'spotify:playlist:2MPjgtZn4IxxV7lW9RjO3E'
   },
@@ -50,7 +50,7 @@ export const QUICK_ACCESS_ITEMS: HomeCardItem[] = [
     id: 'masculine-white-girl',
     title: 'Ultimate Masculine White Girl Playlist',
     subtitle: 'Playlist • Shreeji',
-    image: '/covers/quick-ultimate-masculine.png',
+    image: 'https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84548f934f722fc37082b5f75e',
     type: 'playlist',
     spotifyUri: 'spotify:playlist:0eWPQwqiBULXb39IveEIbP'
   },
@@ -58,7 +58,7 @@ export const QUICK_ACCESS_ITEMS: HomeCardItem[] = [
     id: 'deepwork-v1',
     title: 'DeepWork Volume 1',
     subtitle: 'Album • DeepWork Research',
-    image: '/covers/quick-deepwork-v1.png',
+    image: 'https://image-cdn-fa.spotifycdn.com/image/ab67706c0000da8477279648152295b8d0572854',
     type: 'album',
     spotifyUri: 'spotify:playlist:6qeZgMKQB3S8FbjrNdPDCJ'
   },
@@ -66,7 +66,7 @@ export const QUICK_ACCESS_ITEMS: HomeCardItem[] = [
     id: 'larp-mix',
     title: 'LARP MIX',
     subtitle: 'Playlist • User',
-    image: '/covers/quick-larp-mix.png',
+    image: 'https://image-cdn-fa.spotifycdn.com/image/ab67706c0000da84cb6735803e7638cf97bc14e0',
     type: 'playlist',
     spotifyUri: 'spotify:playlist:5AXBZqcu0HJeWRi6lFNm8Y'
   },
@@ -74,7 +74,7 @@ export const QUICK_ACCESS_ITEMS: HomeCardItem[] = [
     id: 'white-girl-bangers',
     title: 'White girl bangers 💃💅🏽💈💿🪩',
     subtitle: 'Playlist • Spotify',
-    image: '/covers/quick-white-girl-bangers.png',
+    image: 'https://mosaic.scdn.co/640/ab67616d00001e022ffc2c580b6595a3e675a730ab67616d00001e0231548865f7c729290b96c794ab67616d00001e0297c7b770b28ffeed164f4d0eab67616d00001e02d20c38f295039520d688a888',
     type: 'playlist',
     spotifyUri: 'spotify:playlist:2VdPwVMqEGb6dwQVRlC88L'
   }
