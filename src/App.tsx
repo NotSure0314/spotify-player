@@ -22,6 +22,7 @@ import {
   savePinnedPlaylistIds,
   SpotifyUserProfile
 } from './spotifyApi';
+import { getHighResImageUrl } from './utils/imageUtils';
 
 export function App() {
   const [playlists, setPlaylists] = useState<Playlist[]>(() => getSavedImportedPlaylists());
@@ -139,8 +140,8 @@ export function App() {
           const firstDetails = await fetchLivePlaylistDetails(result.playlists[0].id);
           const userPlaylists = result.playlists.map((p, idx) =>
             idx === 0 && firstDetails
-              ? { ...p, tracks: firstDetails.tracks, coverUrl: firstDetails.coverUrl || p.coverUrl }
-              : p
+              ? { ...p, tracks: firstDetails.tracks, coverUrl: getHighResImageUrl(firstDetails.coverUrl || p.coverUrl) }
+              : { ...p, coverUrl: getHighResImageUrl(p.coverUrl) }
           );
 
           // Merge imported playlists (persisted across reloads) with user profile playlists
@@ -152,7 +153,7 @@ export function App() {
           if (firstDetails && firstDetails.tracks.length > 0) {
             allPlaylists = allPlaylists.map(p => {
               if ((p.id === result.playlists[0].id || p.playlistId === result.playlists[0].playlistId) && firstDetails.tracks.length > p.tracks.length) {
-                const upgraded = { ...p, tracks: firstDetails.tracks, coverUrl: firstDetails.coverUrl || p.coverUrl };
+                const upgraded = { ...p, tracks: firstDetails.tracks, coverUrl: getHighResImageUrl(firstDetails.coverUrl || p.coverUrl) };
                 addImportedPlaylist(upgraded);
                 return upgraded;
               }
@@ -207,8 +208,8 @@ export function App() {
       const firstDetails = await fetchLivePlaylistDetails(result.playlists[0].id);
       const fullPlaylists = result.playlists.map((p, idx) =>
         idx === 0 && firstDetails
-          ? { ...p, tracks: firstDetails.tracks, coverUrl: firstDetails.coverUrl || p.coverUrl }
-          : p
+          ? { ...p, tracks: firstDetails.tracks, coverUrl: getHighResImageUrl(firstDetails.coverUrl || p.coverUrl) }
+          : { ...p, coverUrl: getHighResImageUrl(p.coverUrl) }
       );
 
       setPlaylists(fullPlaylists);
@@ -260,7 +261,7 @@ export function App() {
         const fullPlaylist: Playlist = {
           ...target,
           tracks: details.tracks,
-          coverUrl: details.coverUrl || target.coverUrl,
+          coverUrl: getHighResImageUrl(details.coverUrl || target.coverUrl),
           description: details.description || target.description,
           gradient: details.gradient || target.gradient
         };
@@ -314,7 +315,7 @@ export function App() {
         const fullPlaylist: Playlist = {
           ...matched,
           tracks: details.tracks,
-          coverUrl: details.coverUrl || matched.coverUrl,
+          coverUrl: getHighResImageUrl(details.coverUrl || matched.coverUrl),
           description: details.description || matched.description || 'Spotify Playlist',
           gradient: details.gradient || matched.gradient || '#1e3a8a'
         };
@@ -391,7 +392,7 @@ export function App() {
           id: `spotify:playlist:album-${Date.now()}`,
           title: item.title,
           description: item.subtitle || `Songs from ${item.title}`,
-          coverUrl: item.image || searchRes.tracks[0].coverUrl,
+          coverUrl: getHighResImageUrl(item.image || searchRes.tracks[0]?.coverUrl),
           gradient: '#1e3a8a',
           tracks: searchRes.tracks
         };
@@ -516,7 +517,7 @@ export function App() {
             const fullPlaylist: Playlist = {
               ...(currentPl || details),
               tracks: details.tracks,
-              coverUrl: details.coverUrl || currentPl?.coverUrl || '',
+              coverUrl: getHighResImageUrl(details.coverUrl || currentPl?.coverUrl || ''),
               description: details.description || currentPl?.description || 'Spotify Playlist',
               gradient: details.gradient || currentPl?.gradient || '#1e3a8a'
             };

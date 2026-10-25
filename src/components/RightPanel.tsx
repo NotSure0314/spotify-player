@@ -14,6 +14,7 @@ import {
 import { Track } from '../types';
 import { getArtistProfile } from '../utils/artistData';
 import { getTrackLyrics } from '../utils/lyricsData';
+import { getHighResImageUrl } from '../utils/imageUtils';
 
 interface RightPanelProps {
   currentTrack: Track | null;
@@ -209,7 +210,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   flexShrink: 0
                 }}>
                   <img
-                    src={currentTrack.coverUrl}
+                    src={getHighResImageUrl(currentTrack.coverUrl)}
                     alt={currentTrack.title}
                     style={{
                       width: '100%',
@@ -463,7 +464,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                     {/* Banner Photo (Uses album cover zoomed in) */}
                     <div style={{ position: 'relative', width: '100%', height: '180px' }}>
                       <img
-                        src={currentTrack.coverUrl || artistProfile.image}
+                        src={getHighResImageUrl(currentTrack.coverUrl || artistProfile.image)}
                         alt={artistProfile.name}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
@@ -719,7 +720,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                       }}
                     >
                       <img
-                        src={nextTrack.coverUrl}
+                        src={getHighResImageUrl(nextTrack.coverUrl)}
                         alt={nextTrack.title}
                         style={{ width: '44px', height: '44px', borderRadius: '4px', objectFit: 'cover' }}
                       />
@@ -806,7 +807,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 marginBottom: '20px'
               }}>
                 <img
-                  src={currentTrack.coverUrl}
+                  src={getHighResImageUrl(currentTrack.coverUrl)}
                   alt={currentTrack.title}
                   style={{ width: '44px', height: '44px', borderRadius: '4px', objectFit: 'cover' }}
                 />
@@ -849,7 +850,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
                   <img
-                    src={track.coverUrl}
+                    src={getHighResImageUrl(track.coverUrl)}
                     alt={track.title}
                     style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }}
                   />

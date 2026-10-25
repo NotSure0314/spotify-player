@@ -18,6 +18,7 @@ import {
   PictureInPicture2
 } from 'lucide-react';
 import { Track, RepeatMode } from '../types';
+import { getHighResImageUrl } from '../utils/imageUtils';
 
 interface NowPlayingBarProps {
   currentTrack: Track | null;
@@ -110,7 +111,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
         {currentTrack ? (
           <>
             <img
-              src={currentTrack.coverUrl}
+              src={getHighResImageUrl(currentTrack.coverUrl)}
               alt={currentTrack.title}
               style={{
                 width: '56px',

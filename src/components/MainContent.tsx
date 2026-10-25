@@ -3,6 +3,7 @@ import { Play, Pause, Heart, Clock, MoreHorizontal, ArrowDownCircle, Plus, Check
 import { Playlist, Track } from '../types';
 import { extractDominantColor, getFallbackPlaylistColor } from '../utils/colorExtractor';
 import { SpotifyUserProfile } from '../spotifyApi';
+import { getHighResImageUrl } from '../utils/imageUtils';
 import {
   HomeCardItem,
   QUICK_ACCESS_ITEMS,
@@ -173,7 +174,7 @@ export const MainContent: React.FC<MainContentProps> = ({
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <img
-            src={t.coverUrl}
+            src={getHighResImageUrl(t.coverUrl)}
             alt={t.title}
             style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }}
           />
@@ -279,7 +280,7 @@ export const MainContent: React.FC<MainContentProps> = ({
         boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
       }}>
         <img
-          src={pl.coverUrl}
+          src={getHighResImageUrl(pl.coverUrl)}
           alt={pl.title}
           style={{
             position: 'absolute',
@@ -682,7 +683,7 @@ export const MainContent: React.FC<MainContentProps> = ({
             </div>
           ) : (
             <img
-              src={playlist.coverUrl}
+              src={getHighResImageUrl(playlist.coverUrl)}
               alt={playlist.title}
               className="playlist-header-cover"
             />
@@ -1014,7 +1015,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   {/* Title & Artist */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px', overflow: 'hidden' }}>
                     <img
-                      src={track.coverUrl}
+                      src={getHighResImageUrl(track.coverUrl)}
                       alt={track.title}
                       style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
                     />
@@ -1213,7 +1214,7 @@ export const MainContent: React.FC<MainContentProps> = ({
         {QUICK_ACCESS_ITEMS.map((item, index) => {
           // If there is an existing loaded playlist matching title, link to it
           const matched = playlists.find(p => p.title.toLowerCase().trim() === item.title.toLowerCase().trim());
-          const displayImage = item.image || matched?.coverUrl || '';
+          const displayImage = getHighResImageUrl(item.image || matched?.coverUrl || '');
           const displayTitle = matched?.title || item.title;
 
           return (
@@ -1361,7 +1362,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                 boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
               }}>
                 <img
-                  src={item.image}
+                  src={getHighResImageUrl(item.image)}
                   alt={item.title}
                   style={{
                     position: 'absolute',
@@ -1505,7 +1506,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                 boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
               }}>
                 <img
-                  src={item.image}
+                  src={getHighResImageUrl(item.image)}
                   alt={item.title}
                   style={{
                     position: 'absolute',
@@ -1621,7 +1622,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                 boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
               }}>
                 <img
-                  src={item.image}
+                  src={getHighResImageUrl(item.image)}
                   alt={item.title}
                   style={{
                     position: 'absolute',
@@ -1796,7 +1797,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                     border: '2px solid rgba(255,255,255,0.4)'
                   }}>
                     <img
-                      src={item.image}
+                      src={getHighResImageUrl(item.image)}
                       alt={item.title}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
@@ -1921,7 +1922,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                 boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
               }}>
                 <img
-                  src={item.image}
+                  src={getHighResImageUrl(item.image)}
                   alt={item.title}
                   style={{
                     position: 'absolute',
@@ -2062,7 +2063,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                 boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
               }}>
                 <img
-                  src={item.image}
+                  src={getHighResImageUrl(item.image)}
                   alt={item.title}
                   style={{
                     position: 'absolute',
@@ -2188,7 +2189,7 @@ export const MainContent: React.FC<MainContentProps> = ({
               >
                 {/* Background Artwork */}
                 <img
-                  src={item.image}
+                  src={getHighResImageUrl(item.image)}
                   alt={item.title}
                   style={{
                     position: 'absolute',

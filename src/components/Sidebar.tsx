@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Library, Plus, ArrowLeft, Heart, Search, ListFilter, Download, Play, Pin } from 'lucide-react';
 import { Playlist } from '../types';
 import { SpotifyUserProfile } from '../spotifyApi';
+import { getHighResImageUrl } from '../utils/imageUtils';
 
 interface SidebarProps {
   currentView: string;
@@ -466,7 +467,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               <div style={{ position: 'relative', width: '48px', height: '48px', flexShrink: 0 }}>
                 <img
-                  src={pl.coverUrl}
+                  src={getHighResImageUrl(pl.coverUrl)}
                   alt={pl.title}
                   style={{
                     width: '48px',
