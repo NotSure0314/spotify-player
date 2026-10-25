@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Heart, Clock, MoreHorizontal, ArrowDownCircle, Plus, Check, Shuffle } from 'lucide-react';
 import { Playlist, Track } from '../types';
 import { extractDominantColor, getFallbackPlaylistColor, darkenColor } from '../utils/colorExtractor';
@@ -165,6 +165,98 @@ export const MainContent: React.FC<MainContentProps> = ({
       });
     }
   }, [selectedPlaylist?.id, selectedPlaylist?.coverUrl]);
+
+  const displayName = userProfile?.name || userProfile?.id || 'Spotify';
+
+  // Dynamically compute Quick Access cards from the current synced user's library playlists!
+  const quickAccessItems: HomeCardItem[] = useMemo(() => {
+    if (playlists && playlists.length > 0) {
+      const userCards: HomeCardItem[] = playlists.slice(0, 8).map(p => ({
+        id: p.id,
+        title: p.title,
+        subtitle: p.description || `Playlist • ${p.author || displayName}`,
+        image: getHighResImageUrl(p.coverUrl),
+        type: 'playlist',
+        spotifyUri: p.playlistId || p.id
+      }));
+
+      if (userCards.length >= 8) {
+        return userCards;
+      }
+
+      // If user has fewer than 8 playlists, supplement with generic Spotify curated playlists
+      const fallbackCurated: HomeCardItem[] = [
+        {
+          id: 'curated-top-hits',
+          title: "Today's Top Hits",
+          subtitle: 'Playlist • Spotify',
+          image: 'https://i.scdn.co/image/ab67706f00000002e8ccdd567fff6a597b87586b',
+          type: 'playlist',
+          spotifyUri: 'spotify:playlist:37i9dQZF1DXcBWIGoYBM5M'
+        },
+        {
+          id: 'curated-rapcaviar',
+          title: 'RapCaviar',
+          subtitle: 'Playlist • Spotify',
+          image: 'https://i.scdn.co/image/ab67706f000000021b4a02be0495f32b5006b528',
+          type: 'playlist',
+          spotifyUri: 'spotify:playlist:37i9dQZF1DX0XUsuxWHRQd'
+        },
+        {
+          id: 'curated-lofi',
+          title: 'Lofi Beats',
+          subtitle: 'Playlist • Spotify',
+          image: 'https://i.scdn.co/image/ab67706f000000025741f92e8fed54f24559196b',
+          type: 'playlist',
+          spotifyUri: 'spotify:playlist:37i9dQZF1DX4t95PaoR1T0'
+        },
+        {
+          id: 'curated-rock',
+          title: '00s Rock Anthems',
+          subtitle: 'Playlist • Spotify',
+          image: 'https://i.scdn.co/image/ab67706f0000000258cb9f9b5a037b5f54ccca27',
+          type: 'playlist',
+          spotifyUri: 'spotify:playlist:37i9dQZF1DX3oM43CtKnRV'
+        }
+      ];
+
+      const filteredCurated = fallbackCurated.filter(
+        c => !userCards.some(u => u.title.toLowerCase() === c.title.toLowerCase())
+      );
+      return [...userCards, ...filteredCurated.slice(0, 8 - userCards.length)];
+    }
+    return QUICK_ACCESS_ITEMS;
+  }, [playlists, displayName]);
+
+  // Dynamically compute Recents cards from the current synced user's library playlists!
+  const recentsItems: HomeCardItem[] = useMemo(() => {
+    if (playlists && playlists.length > 0) {
+      return playlists.slice(0, 8).map(p => ({
+        id: `recent-${p.id}`,
+        title: p.title,
+        subtitle: p.description || `Playlist • ${p.author || displayName}`,
+        image: getHighResImageUrl(p.coverUrl),
+        type: 'playlist',
+        spotifyUri: p.playlistId || p.id
+      }));
+    }
+    return RECENTS_ITEMS;
+  }, [playlists, displayName]);
+
+  // Dynamically compute Jump Back In cards from the current synced user's library playlists!
+  const jumpBackInItems: HomeCardItem[] = useMemo(() => {
+    if (playlists && playlists.length > 4) {
+      return [...playlists].reverse().slice(0, 8).map(p => ({
+        id: `jump-${p.id}`,
+        title: p.title,
+        subtitle: p.description || `Playlist • ${p.author || displayName}`,
+        image: getHighResImageUrl(p.coverUrl),
+        type: 'playlist',
+        spotifyUri: p.playlistId || p.id
+      }));
+    }
+    return JUMP_BACK_IN_ITEMS;
+  }, [playlists, displayName]);
 
   // Helper renderer for track rows
   const renderTrackRow = (t: Track, idx: number) => {
@@ -1191,8 +1283,6 @@ export const MainContent: React.FC<MainContentProps> = ({
   }
 
   // 3. HOME VIEW (DEFAULT)
-  const displayName = userProfile?.name || userProfile?.id || 'Shreeji';
-
   // Resolve card properties so user's real library playlist covers and titles ALWAYS take precedence
   const resolveCardProps = (item: HomeCardItem) => {
     const itemTitle = (item.title || '').toLowerCase().trim();
@@ -1339,7 +1429,7 @@ export const MainContent: React.FC<MainContentProps> = ({
 
       {/* Responsive Quick Access Grid (2 columns on compact/medium, 4 columns on wide) */}
       <div className="quick-access-grid">
-        {QUICK_ACCESS_ITEMS.map((item, index) => {
+        {quickAccessItems.map((item, index) => {
           const { displayImage, displayTitle, resolvedItem } = resolveCardProps(item);
 
           return (
@@ -1592,7 +1682,7 @@ export const MainContent: React.FC<MainContentProps> = ({
       <div style={{ marginBottom: '40px' }}>
         {renderSectionHeader('Jump back in')}
         <div className="spotify-card-grid">
-          {JUMP_BACK_IN_ITEMS.map(item => {
+          {jumpBackInItems.map(item => {
             const { displayImage, displayTitle, resolvedItem } = resolveCardProps(item);
 
             return (
@@ -1712,7 +1802,7 @@ export const MainContent: React.FC<MainContentProps> = ({
       <div style={{ marginBottom: '40px' }}>
         {renderSectionHeader('Recents')}
         <div className="spotify-card-grid">
-          {RECENTS_ITEMS.map(item => {
+          {recentsItems.map(item => {
             const { displayImage, displayTitle, resolvedItem } = resolveCardProps(item);
 
             return (

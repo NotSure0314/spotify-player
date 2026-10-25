@@ -14,6 +14,7 @@ import {
   importSpotifyPlaylist,
   getSavedUserProfile,
   getSavedImportedPlaylists,
+  saveImportedPlaylists,
   addImportedPlaylist,
   removeImportedPlaylist,
   getSavedLikedTrackIds,
@@ -128,22 +129,26 @@ export function App() {
     audioEngine.setVolume(volume);
   }, []);
 
-  // Sync liked tracks to storage
+  // Sync liked tracks to storage scoped to active user
   useEffect(() => {
-    saveLikedTrackIds(likedTrackIds);
-  }, [likedTrackIds]);
+    if (userProfile?.id) {
+      saveLikedTrackIds(likedTrackIds, userProfile.id);
+    }
+  }, [likedTrackIds, userProfile?.id]);
 
-  // Sync pinned playlists to storage
+  // Sync pinned playlists to storage scoped to active user
   useEffect(() => {
-    savePinnedPlaylistIds(pinnedPlaylistIds);
-  }, [pinnedPlaylistIds]);
+    if (userProfile?.id) {
+      savePinnedPlaylistIds(pinnedPlaylistIds, userProfile.id);
+    }
+  }, [pinnedPlaylistIds, userProfile?.id]);
 
   // 2. Initial Load: Sync User Playlists & Merge with Persisted Imported Playlists
   useEffect(() => {
     async function initUser() {
       const saved = getSavedUserProfile();
       const targetUser = saved?.id || 'spotify';
-      const savedImported = getSavedImportedPlaylists();
+      const savedImported = getSavedImportedPlaylists(saved?.id);
 
       try {
         const result = await fetchUserProfile(targetUser);
@@ -157,7 +162,7 @@ export function App() {
               : { ...p, coverUrl: getHighResImageUrl(p.coverUrl) }
           );
 
-          // Merge imported playlists (persisted across reloads) with user profile playlists
+          // Merge imported playlists (persisted for this user) with user profile playlists
           const importedIds = new Set(savedImported.map(p => p.id));
           const deduplicatedUser = userPlaylists.filter(p => !importedIds.has(p.id));
           let allPlaylists = [...savedImported, ...deduplicatedUser];
@@ -167,7 +172,7 @@ export function App() {
             allPlaylists = allPlaylists.map(p => {
               if ((p.id === result.playlists[0].id || p.playlistId === result.playlists[0].playlistId) && firstDetails.tracks.length > p.tracks.length) {
                 const upgraded = { ...p, tracks: firstDetails.tracks, coverUrl: getHighResImageUrl(firstDetails.coverUrl || p.coverUrl) };
-                addImportedPlaylist(upgraded);
+                addImportedPlaylist(upgraded, result.user.id);
                 return upgraded;
               }
               return p;
@@ -177,17 +182,9 @@ export function App() {
           setPlaylists(allPlaylists);
           setSelectedPlaylistId(prev => prev || allPlaylists[0]?.id || null);
 
-          // Default initial pinned playlists from real Spotify account if none saved yet
-          const savedPinned = getSavedPinnedPlaylistIds();
-          if (savedPinned.length === 0) {
-            const defaultPinnedNames = ['hello kitter', 'ultimate masculine white girl playlist', 'gym'];
-            const autoPinned = allPlaylists
-              .filter(p => defaultPinnedNames.some(name => p.title.toLowerCase().trim().includes(name)))
-              .map(p => p.id);
-            if (autoPinned.length > 0) {
-              setPinnedPlaylistIds(autoPinned);
-            }
-          }
+          // Scoped pinned playlists for this user
+          const savedPinned = getSavedPinnedPlaylistIds(result.user.id);
+          setPinnedPlaylistIds(savedPinned);
 
           if (firstDetails?.tracks?.length && !currentTrack) {
             setCurrentTrack(firstDetails.tracks[0]);
@@ -225,8 +222,23 @@ export function App() {
           : { ...p, coverUrl: getHighResImageUrl(p.coverUrl) }
       );
 
+      // Persist the user's library isolated to their account ID
+      saveImportedPlaylists(fullPlaylists, result.user.id);
+
+      // Clean legacy global key so other accounts never pick up previous accounts
+      try {
+        localStorage.removeItem('spotify_imported_playlists');
+      } catch {}
+
+      // Update liked tracks and pinned playlists for the newly synced user
+      const userLiked = getSavedLikedTrackIds(result.user.id);
+      setLikedTrackIds(userLiked);
+      const userPinned = getSavedPinnedPlaylistIds(result.user.id);
+      setPinnedPlaylistIds(userPinned);
+
       setPlaylists(fullPlaylists);
       setSelectedPlaylistId(fullPlaylists[0].id);
+      setViewedPlaylist(null);
       setCurrentView('home');
 
       if (firstDetails?.tracks?.length) {

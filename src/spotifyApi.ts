@@ -13,81 +13,98 @@ const STORAGE_KEY_IMPORTED_PLAYLISTS = 'spotify_imported_playlists';
 const STORAGE_KEY_LIKED_TRACKS = 'spotify_liked_tracks';
 const STORAGE_KEY_PINNED_PLAYLISTS = 'spotify_pinned_playlists';
 
-export function getSavedImportedPlaylists(): Playlist[] {
+export function getSavedImportedPlaylists(userId?: string): Playlist[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_IMPORTED_PLAYLISTS);
-    return raw ? JSON.parse(raw) : [];
+    const currentUserId = userId || getSavedUserProfile()?.id;
+    const key = currentUserId ? `${STORAGE_KEY_IMPORTED_PLAYLISTS}_${currentUserId}` : STORAGE_KEY_IMPORTED_PLAYLISTS;
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw);
+    if (!currentUserId) {
+      const legacy = localStorage.getItem(STORAGE_KEY_IMPORTED_PLAYLISTS);
+      return legacy ? JSON.parse(legacy) : [];
+    }
+    return [];
   } catch {
     return [];
   }
 }
 
-export function saveImportedPlaylists(playlists: Playlist[]) {
+export function saveImportedPlaylists(playlists: Playlist[], userId?: string) {
   try {
-    localStorage.setItem(STORAGE_KEY_IMPORTED_PLAYLISTS, JSON.stringify(playlists));
+    const currentUserId = userId || getSavedUserProfile()?.id;
+    const key = currentUserId ? `${STORAGE_KEY_IMPORTED_PLAYLISTS}_${currentUserId}` : STORAGE_KEY_IMPORTED_PLAYLISTS;
+    localStorage.setItem(key, JSON.stringify(playlists));
   } catch (err) {
     console.error('Failed to save imported playlists:', err);
   }
 }
 
-export function addImportedPlaylist(playlist: Playlist) {
+export function addImportedPlaylist(playlist: Playlist, userId?: string) {
   try {
-    const existing = getSavedImportedPlaylists();
+    const existing = getSavedImportedPlaylists(userId);
     const cleanId = (playlist.playlistId || playlist.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
     const filtered = existing.filter(p => {
       const pClean = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
       return p.id !== playlist.id && pClean !== cleanId;
     });
     const updated = [playlist, ...filtered];
-    saveImportedPlaylists(updated);
+    saveImportedPlaylists(updated, userId);
   } catch (err) {
     console.error('Failed to add imported playlist:', err);
   }
 }
 
-export function removeImportedPlaylist(playlistId: string) {
+export function removeImportedPlaylist(playlistId: string, userId?: string) {
   try {
-    const existing = getSavedImportedPlaylists();
+    const existing = getSavedImportedPlaylists(userId);
     const cleanId = playlistId.replace('spotify:playlist:', '').replace('spotify:album:', '');
     const updated = existing.filter(p => {
       const pClean = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
       return p.id !== playlistId && pClean !== cleanId;
     });
-    saveImportedPlaylists(updated);
+    saveImportedPlaylists(updated, userId);
   } catch (err) {
     console.error('Failed to remove imported playlist:', err);
   }
 }
 
-export function getSavedLikedTrackIds(): Set<string> {
+export function getSavedLikedTrackIds(userId?: string): Set<string> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_LIKED_TRACKS);
+    const currentUserId = userId || getSavedUserProfile()?.id;
+    const key = currentUserId ? `${STORAGE_KEY_LIKED_TRACKS}_${currentUserId}` : STORAGE_KEY_LIKED_TRACKS;
+    const raw = localStorage.getItem(key);
     return raw ? new Set(JSON.parse(raw)) : new Set();
   } catch {
     return new Set();
   }
 }
 
-export function saveLikedTrackIds(ids: Set<string>) {
+export function saveLikedTrackIds(ids: Set<string>, userId?: string) {
   try {
-    localStorage.setItem(STORAGE_KEY_LIKED_TRACKS, JSON.stringify(Array.from(ids)));
+    const currentUserId = userId || getSavedUserProfile()?.id;
+    const key = currentUserId ? `${STORAGE_KEY_LIKED_TRACKS}_${currentUserId}` : STORAGE_KEY_LIKED_TRACKS;
+    localStorage.setItem(key, JSON.stringify(Array.from(ids)));
   } catch (err) {
     console.error('Failed to save liked track IDs:', err);
   }
 }
 
-export function getSavedPinnedPlaylistIds(): string[] {
+export function getSavedPinnedPlaylistIds(userId?: string): string[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_PINNED_PLAYLISTS);
+    const currentUserId = userId || getSavedUserProfile()?.id;
+    const key = currentUserId ? `${STORAGE_KEY_PINNED_PLAYLISTS}_${currentUserId}` : STORAGE_KEY_PINNED_PLAYLISTS;
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-export function savePinnedPlaylistIds(ids: string[]) {
+export function savePinnedPlaylistIds(ids: string[], userId?: string) {
   try {
-    localStorage.setItem(STORAGE_KEY_PINNED_PLAYLISTS, JSON.stringify(ids));
+    const currentUserId = userId || getSavedUserProfile()?.id;
+    const key = currentUserId ? `${STORAGE_KEY_PINNED_PLAYLISTS}_${currentUserId}` : STORAGE_KEY_PINNED_PLAYLISTS;
+    localStorage.setItem(key, JSON.stringify(ids));
   } catch (err) {
     console.error('Failed to save pinned playlist IDs:', err);
   }

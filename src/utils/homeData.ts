@@ -15,68 +15,68 @@ export interface HomeCardItem {
 
 export const QUICK_ACCESS_ITEMS: HomeCardItem[] = [
   {
-    id: 'hello-kitter',
-    title: 'Hello Kitter',
-    subtitle: 'Playlist • Shreeji',
-    image: 'https://image-cdn-fa.spotifycdn.com/image/ab67706c0000da84c0835a7462cbc57696426e97',
-    type: 'playlist',
-    spotifyUri: 'spotify:playlist:5k3iI5fE68jr4UdX2UG6NN'
-  },
-  {
-    id: 'gym',
-    title: 'Gym',
-    subtitle: 'Playlist • Shreeji',
-    image: 'https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da842d8e4ca6999297f03bfa15b3',
-    type: 'playlist',
-    spotifyUri: 'spotify:playlist:1GbuGNkiWPHsKoEBZaQ3Xx'
-  },
-  {
-    id: 'peak-kanye',
-    title: 'Peak Kanye',
-    subtitle: 'Playlist • Rory',
-    image: 'https://mosaic.scdn.co/640/ab67616d00001e020cd942c1a864afa4e92d04f2ab67616d00001e021dacfbc31cc873d132958af9ab67616d00001e0226f7f19c7f0381e56156c94aab67616d00001e02d9194aa18fa4c9362b47464f',
-    type: 'playlist',
-    spotifyUri: 'spotify:playlist:6Fs9lBMpHdqjvQ6wCPDnKc'
-  },
-  {
-    id: 'enter-sandman',
-    title: 'Enter Sandman',
-    subtitle: 'Playlist • Dick',
-    image: 'https://i.scdn.co/image/ab67616d00001e02aeef6d1f525548aabcea0f6e',
-    type: 'playlist',
-    spotifyUri: 'spotify:playlist:2MPjgtZn4IxxV7lW9RjO3E'
-  },
-  {
-    id: 'masculine-white-girl',
-    title: 'Ultimate Masculine White Girl Playlist',
-    subtitle: 'Playlist • Shreeji',
-    image: 'https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84548f934f722fc37082b5f75e',
-    type: 'playlist',
-    spotifyUri: 'spotify:playlist:0eWPQwqiBULXb39IveEIbP'
-  },
-  {
-    id: 'deepwork-v1',
-    title: 'DeepWork Volume 1',
-    subtitle: 'Album • DeepWork Research',
-    image: 'https://image-cdn-fa.spotifycdn.com/image/ab67706c0000da8477279648152295b8d0572854',
-    type: 'album',
-    spotifyUri: 'spotify:playlist:6qeZgMKQB3S8FbjrNdPDCJ'
-  },
-  {
-    id: 'larp-mix',
-    title: 'LARP MIX',
-    subtitle: 'Playlist • User',
-    image: 'https://image-cdn-fa.spotifycdn.com/image/ab67706c0000da84cb6735803e7638cf97bc14e0',
-    type: 'playlist',
-    spotifyUri: 'spotify:playlist:5AXBZqcu0HJeWRi6lFNm8Y'
-  },
-  {
-    id: 'white-girl-bangers',
-    title: 'White girl bangers 💃💅🏽💈💿🪩',
+    id: 'top-hits',
+    title: "Today's Top Hits",
     subtitle: 'Playlist • Spotify',
-    image: 'https://mosaic.scdn.co/640/ab67616d00001e022ffc2c580b6595a3e675a730ab67616d00001e0231548865f7c729290b96c794ab67616d00001e0297c7b770b28ffeed164f4d0eab67616d00001e02d20c38f295039520d688a888',
+    image: 'https://i.scdn.co/image/ab67706f00000002e8ccdd567fff6a597b87586b',
     type: 'playlist',
-    spotifyUri: 'spotify:playlist:2VdPwVMqEGb6dwQVRlC88L'
+    spotifyUri: 'spotify:playlist:37i9dQZF1DXcBWIGoYBM5M'
+  },
+  {
+    id: 'rapcaviar',
+    title: 'RapCaviar',
+    subtitle: 'Playlist • Spotify',
+    image: 'https://i.scdn.co/image/ab67706f000000021b4a02be0495f32b5006b528',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:37i9dQZF1DX0XUsuxWHRQd'
+  },
+  {
+    id: 'lofi-beats',
+    title: 'Lofi Beats',
+    subtitle: 'Playlist • Spotify',
+    image: 'https://i.scdn.co/image/ab67706f000000025741f92e8fed54f24559196b',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:37i9dQZF1DX4t95PaoR1T0'
+  },
+  {
+    id: 'new-music-friday',
+    title: 'New Music Friday',
+    subtitle: 'Playlist • Spotify',
+    image: 'https://i.scdn.co/image/ab67706f000000027b4b3b3a6ef06efbe067c213',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:37i9dQZF1DX4JAvHpjipBk'
+  },
+  {
+    id: 'rock-anthems',
+    title: '00s Rock Anthems',
+    subtitle: 'Playlist • Spotify',
+    image: 'https://i.scdn.co/image/ab67706f0000000258cb9f9b5a037b5f54ccca27',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:37i9dQZF1DX3oM43CtKnRV'
+  },
+  {
+    id: 'hot-country',
+    title: 'Hot Country',
+    subtitle: 'Playlist • Spotify',
+    image: 'https://i.scdn.co/image/ab67706f00000002061e564d27572ce5b40cf72f',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:37i9dQZF1DX1lVhptIYRda'
+  },
+  {
+    id: 'viva-latino',
+    title: 'Viva Latino',
+    subtitle: 'Playlist • Spotify',
+    image: 'https://i.scdn.co/image/ab67706f00000002e861a494cc3da1b36e84d416',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:37i9dQZF1DX10zKzsJ2jva'
+  },
+  {
+    id: 'workout',
+    title: 'No Brainer Workout',
+    subtitle: 'Playlist • Spotify',
+    image: 'https://i.scdn.co/image/ab67706f000000024f0c4bb211244abf04df5943',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:37i9dQZF1DX76t638V64Cr'
   }
 ];
 
@@ -192,70 +192,68 @@ export const JUMP_BACK_IN_ITEMS: HomeCardItem[] = [
 
 export const RECENTS_ITEMS: HomeCardItem[] = [
   {
-    id: 'recent-hello-kitter',
-    title: 'Hello Kitter',
-    subtitle: 'Playlist • Shreeji',
-    image: '/covers/recent-hello-kitter.png',
-    type: 'playlist'
-  },
-  {
-    id: 'recent-deepwork',
-    title: 'DeepWork Volume 1',
-    subtitle: 'Album • DeepWork...',
-    image: '/covers/recent-deepwork-1.png',
-    type: 'album'
-  },
-  {
-    id: 'recent-olivia-dean',
-    title: 'love me not olivia dean',
-    subtitle: 'Playlist • MXNIKK',
-    image: '/covers/recent-love-me-not.png',
-    type: 'playlist'
-  },
-  {
-    id: 'recent-gym',
-    title: 'Gym',
-    subtitle: 'Playlist • Shreeji',
-    image: 'https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da842d8e4ca6999297f03bfa15b3',
+    id: 'recent-top-hits',
+    title: "Today's Top Hits",
+    subtitle: 'Playlist • Spotify',
+    image: 'https://i.scdn.co/image/ab67706f00000002e8ccdd567fff6a597b87586b',
     type: 'playlist',
-    spotifyUri: 'spotify:playlist:1GbuGNkiWPHsKoEBZaQ3Xx'
+    spotifyUri: 'spotify:playlist:37i9dQZF1DXcBWIGoYBM5M'
   },
   {
-    id: 'recent-enter-sandman',
-    title: 'Enter Sandman',
-    subtitle: 'Playlist • Dick',
-    image: '/covers/recent-enter-sandman.png',
-    type: 'playlist'
+    id: 'recent-rapcaviar',
+    title: 'RapCaviar',
+    subtitle: 'Playlist • Spotify',
+    image: 'https://i.scdn.co/image/ab67706f000000021b4a02be0495f32b5006b528',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:37i9dQZF1DX0XUsuxWHRQd'
   },
   {
-    id: 'recent-peak-kanye',
-    title: 'Peak Kanye',
-    subtitle: 'Playlist • Rory',
-    image: '/covers/recent-peak-kanye.png',
-    type: 'playlist'
+    id: 'recent-lofi',
+    title: 'Lofi Beats',
+    subtitle: 'Playlist • Spotify',
+    image: 'https://i.scdn.co/image/ab67706f000000025741f92e8fed54f24559196b',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:37i9dQZF1DX4t95PaoR1T0'
   },
   {
-    id: 'recent-masculine',
-    title: 'Ultimate Masculine...',
-    subtitle: 'Playlist • Shreeji',
-    image: '/covers/recent-ultimate-masculine.png',
-    type: 'playlist'
+    id: 'recent-rock',
+    title: '00s Rock Anthems',
+    subtitle: 'Playlist • Spotify',
+    image: 'https://i.scdn.co/image/ab67706f0000000258cb9f9b5a037b5f54ccca27',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:37i9dQZF1DX3oM43CtKnRV'
   },
   {
-    id: 'recent-never-see-me',
-    title: 'Never See Me Again',
-    subtitle: 'Track • Kanye West',
-    image: '/covers/recent-never-see-me-again.png',
-    type: 'track',
-    hasProgress: true,
-    progressPercent: 65
+    id: 'recent-country',
+    title: 'Hot Country',
+    subtitle: 'Playlist • Spotify',
+    image: 'https://i.scdn.co/image/ab67706f00000002061e564d27572ce5b40cf72f',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:37i9dQZF1DX1lVhptIYRda'
   },
   {
-    id: 'recent-stadium-pump',
-    title: 'STADIUM PUMP UP...',
-    subtitle: 'Playlist • j_rosendahl',
-    image: '/covers/recent-stadium-pump-up.png',
-    type: 'playlist'
+    id: 'recent-latino',
+    title: 'Viva Latino',
+    subtitle: 'Playlist • Spotify',
+    image: 'https://i.scdn.co/image/ab67706f00000002e861a494cc3da1b36e84d416',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:37i9dQZF1DX10zKzsJ2jva'
+  },
+  {
+    id: 'recent-workout',
+    title: 'No Brainer Workout',
+    subtitle: 'Playlist • Spotify',
+    image: 'https://i.scdn.co/image/ab67706f000000024f0c4bb211244abf04df5943',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:37i9dQZF1DX76t638V64Cr'
+  },
+  {
+    id: 'recent-new-music',
+    title: 'New Music Friday',
+    subtitle: 'Playlist • Spotify',
+    image: 'https://i.scdn.co/image/ab67706f000000027b4b3b3a6ef06efbe067c213',
+    type: 'playlist',
+    spotifyUri: 'spotify:playlist:37i9dQZF1DX4JAvHpjipBk'
   }
 ];
 
