@@ -377,6 +377,33 @@ export function App() {
     }
   }, [selectedPlaylistId]);
 
+  // Dynamic Tab Title matching authentic Spotify Web Player
+  useEffect(() => {
+    if (currentView === 'playlist' && selectedPlaylist) {
+      const isAlbum = selectedPlaylist.description?.toLowerCase().includes('album') ||
+                      selectedPlaylist.title.toLowerCase().includes('album') ||
+                      selectedPlaylist.id.includes(':album:');
+      const author = selectedPlaylist.author || (userProfile?.id && selectedPlaylist.description?.includes(userProfile.id) ? userProfile.name : userProfile?.name) || 'Spotify';
+      if (isAlbum) {
+        document.title = `${selectedPlaylist.title} - album by ${author} | Spotify`;
+      } else {
+        document.title = `${selectedPlaylist.title} - playlist by ${author} | Spotify`;
+      }
+    } else if (currentView === 'liked') {
+      const author = userProfile?.name || 'Spotify';
+      document.title = `Liked Songs - playlist by ${author} | Spotify`;
+    } else if (currentView === 'search') {
+      if (searchQuery.trim()) {
+        document.title = `Spotify - Search: ${searchQuery.trim()}`;
+      } else {
+        document.title = 'Spotify - Search';
+      }
+    } else {
+      // Home view
+      document.title = 'Spotify - Web Player: Music for everyone';
+    }
+  }, [currentView, selectedPlaylist, userProfile, searchQuery]);
+
   // All tracks from user's loaded library
   const allTracks = playlists.flatMap(p => p.tracks);
 

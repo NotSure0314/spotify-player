@@ -34,6 +34,7 @@ export default async function handler(req: any, res: any) {
 
   // 1. Fetch web player metadata to get the true track count (excluding Spotify's appended recommendations)
   let realTotalCount: number | null = null;
+  let realOwnerName: string | null = null;
   try {
     const pageRes = await fetch(`https://open.spotify.com/playlist/${cleanId}`);
     if (pageRes.ok) {
@@ -43,6 +44,9 @@ export default async function handler(req: any, res: any) {
         const raw = Buffer.from(stateMatch[1], 'base64').toString('utf-8');
         const json = JSON.parse(raw);
         const item = json.entities?.items?.[fullUri];
+        if (item?.ownerV2?.data?.name) {
+          realOwnerName = item.ownerV2.data.name;
+        }
         if (item?.content?.totalCount) {
           realTotalCount = item.content.totalCount;
         }
@@ -143,6 +147,7 @@ export default async function handler(req: any, res: any) {
         playlistId: cleanId,
         title: plData.name || 'Untitled Playlist',
         description: plData.description || 'Spotify Playlist',
+        author: realOwnerName || (cleanId === '5k3iI5fE68jr4UdX2UG6NN' ? 'Shreeji' : 'Spotify'),
         coverUrl: playlistCover || tracks[0]?.coverUrl || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80',
         gradient: getPlaylistPresetGradient(plData.name || ''),
         tracks
@@ -224,6 +229,7 @@ export default async function handler(req: any, res: any) {
       playlistId: cleanId,
       title: entity.name || entity.title || 'Untitled Playlist',
       description: entity.subtitle ? `By ${entity.subtitle}` : 'Spotify Playlist',
+      author: realOwnerName || entity.subtitle || (cleanId === '5k3iI5fE68jr4UdX2UG6NN' ? 'Shreeji' : 'Spotify'),
       coverUrl: playlistCover,
       gradient: getPlaylistPresetGradient(entity.name || entity.title || ''),
       tracks
