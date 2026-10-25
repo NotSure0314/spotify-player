@@ -199,12 +199,14 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                 <div style={{
                   position: 'relative',
                   width: '100%',
-                  aspectRatio: '9 / 12',
-                  maxHeight: '460px',
+                  aspectRatio: '3 / 4',
+                  minHeight: '260px',
+                  maxHeight: '440px',
                   borderRadius: '8px',
                   overflow: 'hidden',
                   boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                  backgroundColor: '#181818'
+                  backgroundColor: '#181818',
+                  flexShrink: 0
                 }}>
                   <img
                     src={currentTrack.coverUrl}
