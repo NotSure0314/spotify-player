@@ -1,7 +1,8 @@
 import React from 'react';
-import { Home, Search, Bell, Users, FolderHeart, RefreshCw, Sparkles } from 'lucide-react';
+import { Search, Bell, Users, FolderHeart, RefreshCw, Sparkles } from 'lucide-react';
 import { SpotifyUserProfile } from '../spotifyApi';
 import { SpotifyLogo } from './SpotifyLogo';
+import { SpotifyHomeIcon } from './SpotifyHomeIcon';
 
 interface TopBarProps {
   currentView: string;
@@ -71,7 +72,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             width: '48px',
             height: '48px',
             borderRadius: '50%',
-            backgroundColor: currentView === 'home' ? '#242424' : '#1f1f1f',
+            backgroundColor: '#1f1f1f',
             border: 'none',
             color: currentView === 'home' ? '#ffffff' : '#b3b3b3',
             display: 'flex',
@@ -84,13 +85,15 @@ export const TopBar: React.FC<TopBarProps> = ({
           onMouseEnter={e => {
             e.currentTarget.style.transform = 'scale(1.04)';
             e.currentTarget.style.color = '#ffffff';
+            e.currentTarget.style.backgroundColor = '#282828';
           }}
           onMouseLeave={e => {
             e.currentTarget.style.transform = 'scale(1)';
-            if (currentView !== 'home') e.currentTarget.style.color = '#b3b3b3';
+            e.currentTarget.style.color = currentView === 'home' ? '#ffffff' : '#b3b3b3';
+            e.currentTarget.style.backgroundColor = '#1f1f1f';
           }}
         >
-          <Home size={22} fill={currentView === 'home' ? '#ffffff' : 'none'} />
+          <SpotifyHomeIcon size={24} />
         </button>
 
         {/* Search Pill Input */}
