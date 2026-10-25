@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, Heart, Clock, MoreHorizontal, ArrowDownCircle, Plus, Check, Shuffle, Pin } from 'lucide-react';
 import { Playlist, Track } from '../types';
-import { extractDominantColor, getFallbackPlaylistColor } from '../utils/colorExtractor';
+import { extractDominantColor, getFallbackPlaylistColor, darkenColor } from '../utils/colorExtractor';
 import { SpotifyUserProfile } from '../spotifyApi';
 import { getHighResImageUrl } from '../utils/imageUtils';
 import {
@@ -569,6 +569,7 @@ export const MainContent: React.FC<MainContentProps> = ({
     const headerColor = isLikedView
       ? '#450af5'
       : (extractedHeaderColor || getFallbackPlaylistColor(playlist.title, playlist.coverUrl));
+    const darkenedHeaderColor = darkenColor(headerColor, 0.56);
 
     return (
       <div className="animate-fade-in" style={{ paddingBottom: '32px' }}>
@@ -580,9 +581,9 @@ export const MainContent: React.FC<MainContentProps> = ({
           width: '100%',
           height: '64px',
           marginBottom: '-64px',
-          backgroundColor: scrolledPastHero ? headerColor : 'transparent',
+          backgroundColor: scrolledPastHero ? darkenedHeaderColor : 'transparent',
           boxShadow: scrolledPastHero ? '0 4px 20px rgba(0, 0, 0, 0.5)' : 'none',
-          transition: 'background-color 0.2s ease, box-shadow 0.2s ease',
+          transition: 'background-color 0.25s ease, box-shadow 0.25s ease',
           display: 'flex',
           alignItems: 'center',
           padding: '0 32px',
@@ -948,7 +949,8 @@ export const MainContent: React.FC<MainContentProps> = ({
               position: 'sticky',
               top: '64px',
               zIndex: 25,
-              backgroundColor: 'var(--background-base)'
+              backgroundColor: scrolledPastHero ? '#1f1f1f' : 'var(--background-base)',
+              transition: 'background-color 0.2s ease'
             }}
           >
             <span style={{ textAlign: 'center' }}>#</span>

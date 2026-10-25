@@ -1,5 +1,43 @@
 const colorCache = new Map<string, string>();
 
+/**
+ * Darkens a color by a given factor (default 56% to match Spotify's sticky header shade)
+ */
+export function darkenColor(color: string, amount: number = 0.56): string {
+  if (!color) return '#181818';
+
+  // Hex color (#rgb or #rrggbb)
+  if (color.startsWith('#')) {
+    let hex = color.slice(1);
+    if (hex.length === 3) {
+      hex = hex.split('').map(c => c + c).join('');
+    }
+    const r = parseInt(hex.slice(0, 2), 16) || 0;
+    const g = parseInt(hex.slice(2, 4), 16) || 0;
+    const b = parseInt(hex.slice(4, 6), 16) || 0;
+    const mult = Math.max(0, 1 - amount);
+    const darkR = Math.round(r * mult);
+    const darkG = Math.round(g * mult);
+    const darkB = Math.round(b * mult);
+    return `rgb(${darkR}, ${darkG}, ${darkB})`;
+  }
+
+  // RGB/RGBA string
+  const rgbMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (rgbMatch) {
+    const r = parseInt(rgbMatch[1], 10) || 0;
+    const g = parseInt(rgbMatch[2], 10) || 0;
+    const b = parseInt(rgbMatch[3], 10) || 0;
+    const mult = Math.max(0, 1 - amount);
+    const darkR = Math.round(r * mult);
+    const darkG = Math.round(g * mult);
+    const darkB = Math.round(b * mult);
+    return `rgb(${darkR}, ${darkG}, ${darkB})`;
+  }
+
+  return `color-mix(in srgb, ${color} ${Math.round((1 - amount) * 100)}%, #000000)`;
+}
+
 export function getFallbackPlaylistColor(title: string, _coverUrl: string = ''): string {
   const t = (title || '').toLowerCase();
   if (t.includes('kitter') || t.includes('hello')) return '#b91c1c'; // Hello Kitty Vibrant Red
