@@ -544,11 +544,38 @@ export function App() {
     }
   };
 
+  // Library-sorted playlists: pinned playlists first (in pinned order), followed by unpinned playlists
+  const librarySortedPlaylists = useMemo(() => {
+    const pinnedSet = new Set(
+      (pinnedPlaylistIds || []).map(id => id.replace('spotify:playlist:', '').replace('spotify:album:', ''))
+    );
+    const isItemPinned = (pl: Playlist) => {
+      const cleanId = (pl.playlistId || pl.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+      return pinnedSet.has(cleanId) || (pinnedPlaylistIds || []).includes(pl.id);
+    };
+
+    const pinnedPlaylists: Playlist[] = [];
+    for (const pid of (pinnedPlaylistIds || [])) {
+      const cleanPid = pid.replace('spotify:playlist:', '').replace('spotify:album:', '');
+      const found = playlists.find(p => {
+        const pClean = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+        return p.id === pid || pClean === cleanPid;
+      });
+      if (found && !pinnedPlaylists.some(p => p.id === found.id)) {
+        pinnedPlaylists.push(found);
+      }
+    }
+
+    const unpinnedPlaylists = playlists.filter(p => !isItemPinned(p));
+    return [...pinnedPlaylists, ...unpinnedPlaylists];
+  }, [playlists, pinnedPlaylistIds]);
+
   // Selected playlist object
   const selectedPlaylist =
     playlists.find(p => p.id === selectedPlaylistId || p.playlistId === selectedPlaylistId) ||
     (viewedPlaylist && (viewedPlaylist.id === selectedPlaylistId || viewedPlaylist.playlistId === selectedPlaylistId) ? viewedPlaylist : null) ||
     viewedPlaylist ||
+    librarySortedPlaylists[0] ||
     playlists[0] ||
     null;
 
@@ -1286,7 +1313,7 @@ export function App() {
         <Sidebar
           currentView={currentView}
           onSelectView={handleSelectView}
-          playlists={playlists}
+          playlists={librarySortedPlaylists}
           selectedPlaylistId={selectedPlaylistId}
           likedCount={likedTrackIds.size}
           onImportPlaylist={handleImportPlaylist}
@@ -1326,7 +1353,8 @@ export function App() {
               }
             }}
             onPlayPlaylistOrAlbum={handlePlayPlaylistOrAlbum}
-            playlists={playlists}
+            playlists={librarySortedPlaylists}
+            pinnedPlaylistIds={pinnedPlaylistIds}
             currentTrack={currentTrack}
             isPlaying={isPlaying}
             onPlayTrack={handlePlayTrack}

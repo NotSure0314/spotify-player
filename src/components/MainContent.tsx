@@ -43,6 +43,7 @@ interface MainContentProps {
   onToggleShuffle?: (playlist?: Playlist) => void;
   isPlaylistPinned?: boolean;
   onTogglePinPlaylist?: (playlist: Playlist) => void;
+  pinnedPlaylistIds?: string[];
 }
 
 const formatDuration = (seconds: number) => {
@@ -120,7 +121,8 @@ export const MainContent: React.FC<MainContentProps> = ({
   isShuffle = false,
   onToggleShuffle,
   isPlaylistPinned = false,
-  onTogglePinPlaylist
+  onTogglePinPlaylist,
+  pinnedPlaylistIds = []
 }) => {
   const [activeChip, setActiveChip] = useState<'all' | 'music' | 'podcasts' | 'audiobooks'>('all');
   const [searchFilter, setSearchFilter] = useState<'all' | 'tracks' | 'playlists'>('all');
@@ -168,10 +170,40 @@ export const MainContent: React.FC<MainContentProps> = ({
 
   const displayName = userProfile?.name || userProfile?.id || 'Spotify';
 
+  // Library-sorted playlists: ensures exact matching order with the library sidebar (pinned first, then unpinned)
+  const librarySortedPlaylists = useMemo(() => {
+    if (!playlists || playlists.length === 0) return [];
+    if (!pinnedPlaylistIds || pinnedPlaylistIds.length === 0) return playlists;
+
+    const pinnedSet = new Set(
+      pinnedPlaylistIds.map(id => id.replace('spotify:playlist:', '').replace('spotify:album:', ''))
+    );
+    const isItemPinned = (pl: Playlist) => {
+      const cleanId = (pl.playlistId || pl.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+      return pinnedSet.has(cleanId) || pinnedPlaylistIds.includes(pl.id);
+    };
+
+    const pinned: Playlist[] = [];
+    for (const pid of pinnedPlaylistIds) {
+      const cleanPid = pid.replace('spotify:playlist:', '').replace('spotify:album:', '');
+      const found = playlists.find(p => {
+        const pClean = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+        return p.id === pid || pClean === cleanPid;
+      });
+      if (found && !pinned.some(p => p.id === found.id)) {
+        pinned.push(found);
+      }
+    }
+
+    const unpinned = playlists.filter(p => !isItemPinned(p));
+    return [...pinned, ...unpinned];
+  }, [playlists, pinnedPlaylistIds]);
+
   // Dynamically compute Quick Access cards from the current synced user's library playlists!
   const quickAccessItems: HomeCardItem[] = useMemo(() => {
-    if (playlists && playlists.length > 0) {
-      const userCards: HomeCardItem[] = playlists.slice(0, 8).map(p => ({
+    const sourcePlaylists = librarySortedPlaylists.length > 0 ? librarySortedPlaylists : playlists;
+    if (sourcePlaylists && sourcePlaylists.length > 0) {
+      const userCards: HomeCardItem[] = sourcePlaylists.slice(0, 8).map(p => ({
         id: p.id,
         title: p.title,
         subtitle: p.description || `Playlist • ${p.author || displayName}`,
@@ -226,12 +258,13 @@ export const MainContent: React.FC<MainContentProps> = ({
       return [...userCards, ...filteredCurated.slice(0, 8 - userCards.length)];
     }
     return QUICK_ACCESS_ITEMS;
-  }, [playlists, displayName]);
+  }, [librarySortedPlaylists, playlists, displayName]);
 
   // Dynamically compute Recents cards from the current synced user's library playlists!
   const recentsItems: HomeCardItem[] = useMemo(() => {
-    if (playlists && playlists.length > 0) {
-      return playlists.slice(0, 8).map(p => ({
+    const sourcePlaylists = librarySortedPlaylists.length > 0 ? librarySortedPlaylists : playlists;
+    if (sourcePlaylists && sourcePlaylists.length > 0) {
+      return sourcePlaylists.slice(0, 8).map(p => ({
         id: `recent-${p.id}`,
         title: p.title,
         subtitle: p.description || `Playlist • ${p.author || displayName}`,
@@ -241,12 +274,13 @@ export const MainContent: React.FC<MainContentProps> = ({
       }));
     }
     return RECENTS_ITEMS;
-  }, [playlists, displayName]);
+  }, [librarySortedPlaylists, playlists, displayName]);
 
   // Dynamically compute Jump Back In cards from the current synced user's library playlists!
   const jumpBackInItems: HomeCardItem[] = useMemo(() => {
-    if (playlists && playlists.length > 4) {
-      return [...playlists].reverse().slice(0, 8).map(p => ({
+    const sourcePlaylists = librarySortedPlaylists.length > 0 ? librarySortedPlaylists : playlists;
+    if (sourcePlaylists && sourcePlaylists.length > 4) {
+      return [...sourcePlaylists].reverse().slice(0, 8).map(p => ({
         id: `jump-${p.id}`,
         title: p.title,
         subtitle: p.description || `Playlist • ${p.author || displayName}`,
@@ -256,7 +290,7 @@ export const MainContent: React.FC<MainContentProps> = ({
       }));
     }
     return JUMP_BACK_IN_ITEMS;
-  }, [playlists, displayName]);
+  }, [librarySortedPlaylists, playlists, displayName]);
 
   // Helper renderer for track rows
   const renderTrackRow = (t: Track, idx: number) => {
