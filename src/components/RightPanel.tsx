@@ -4,7 +4,6 @@ import {
   Mic2,
   ListMusic,
   MoreHorizontal,
-  Play,
   CheckCircle2,
   PlusCircle,
   Share2,
@@ -15,6 +14,7 @@ import { Track } from '../types';
 import { getArtistProfile } from '../utils/artistData';
 import { getTrackLyrics } from '../utils/lyricsData';
 import { getHighResImageUrl } from '../utils/imageUtils';
+import { SpotifyPlayIcon } from './SpotifyIcons';
 
 interface RightPanelProps {
   currentTrack: Track | null;
@@ -242,7 +242,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                     onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.85)')}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.7)')}
                   >
-                    <Play size={12} fill="#ffffff" color="#ffffff" />
+                    <SpotifyPlayIcon size={12} fill="#ffffff" />
                     <span>Switch to video</span>
                   </button>
                 </div>
@@ -426,7 +426,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
                               alignItems: 'center',
                               justifyContent: 'center'
                             }}>
-                              <Play size={14} fill="#ffffff" color="#ffffff" style={{ marginLeft: '2px' }} />
+                              <SpotifyPlayIcon size={14} fill="#ffffff" />
                             </div>
                           </div>
                           <span style={{

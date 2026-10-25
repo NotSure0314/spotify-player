@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Library, Plus, ArrowLeft, Heart, Search, ListFilter, Download, Play, Pin } from 'lucide-react';
+import { Library, Plus, ArrowLeft, Heart, Search, ListFilter, Download, Pin } from 'lucide-react';
 import { Playlist } from '../types';
 import { SpotifyUserProfile } from '../spotifyApi';
 import { getHighResImageUrl } from '../utils/imageUtils';
+import { SpotifyPlayIcon } from './SpotifyIcons';
 
 interface SidebarProps {
   currentView: string;
@@ -523,7 +524,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     cursor: 'pointer'
                   }}
                 >
-                  <Play size={20} fill="#ffffff" color="#ffffff" style={{ marginLeft: '2px' }} />
+                  <SpotifyPlayIcon size={20} fill="#ffffff" />
                 </button>
               </div>
               {!isCollapsed && (

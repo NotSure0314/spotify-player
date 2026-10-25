@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Play,
-  Pause,
   SkipBack,
   SkipForward,
   Shuffle,
@@ -19,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Track, RepeatMode } from '../types';
 import { getHighResImageUrl } from '../utils/imageUtils';
+import { SpotifyPlayIcon, SpotifyPauseIcon } from './SpotifyIcons';
 
 interface NowPlayingBarProps {
   currentTrack: Track | null;
@@ -279,9 +278,9 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
           >
             {isPlaying ? (
-              <Pause size={16} fill="#000000" color="#000000" />
+              <SpotifyPauseIcon size={16} fill="#000000" />
             ) : (
-              <Play size={16} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+              <SpotifyPlayIcon size={16} fill="#000000" />
             )}
           </button>
 

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, Heart, Clock, MoreHorizontal, ArrowDownCircle, Plus, Check, Shuffle, Pin } from 'lucide-react';
+import { Heart, Clock, MoreHorizontal, ArrowDownCircle, Plus, Check, Shuffle, Pin } from 'lucide-react';
 import { Playlist, Track } from '../types';
 import { extractDominantColor, getFallbackPlaylistColor, darkenColor } from '../utils/colorExtractor';
 import { SpotifyUserProfile } from '../spotifyApi';
 import { getHighResImageUrl } from '../utils/imageUtils';
+import { SpotifyPlayIcon, SpotifyPauseIcon } from './SpotifyIcons';
 import {
   HomeCardItem,
   QUICK_ACCESS_ITEMS,
@@ -154,9 +155,9 @@ export const MainContent: React.FC<MainContentProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px' }}>
           {isHovered ? (
             isCurrent && isPlaying ? (
-              <Pause size={16} fill="#ffffff" color="#ffffff" onClick={(e) => { e.stopPropagation(); onTogglePlay(); }} />
+              <SpotifyPauseIcon size={16} fill="#ffffff" onClick={(e) => { e.stopPropagation(); onTogglePlay(); }} />
             ) : (
-              <Play size={16} fill="#ffffff" color="#ffffff" onClick={(e) => { e.stopPropagation(); onPlayTrack(t, searchResults, { id: 'search', title: 'Search Results' }); }} />
+              <SpotifyPlayIcon size={16} fill="#ffffff" onClick={(e) => { e.stopPropagation(); onPlayTrack(t, searchResults, { id: 'search', title: 'Search Results' }); }} />
             )
           ) : isCurrent && isPlaying ? (
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '14px' }}>
@@ -324,7 +325,7 @@ export const MainContent: React.FC<MainContentProps> = ({
           onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
           onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
         >
-          <Play size={22} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+          <SpotifyPlayIcon size={22} fill="#000000" />
         </button>
       </div>
 
@@ -642,9 +643,9 @@ export const MainContent: React.FC<MainContentProps> = ({
                 (t.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase() &&
                  t.artist.trim().toLowerCase() === currentTrack.artist.trim().toLowerCase())
               ) ? (
-                <Pause size={20} fill="#000000" color="#000000" />
+                <SpotifyPauseIcon size={20} fill="#000000" />
               ) : (
-                <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                <SpotifyPlayIcon size={20} fill="#000000" />
               )}
             </button>
             <span style={{
@@ -763,9 +764,9 @@ export const MainContent: React.FC<MainContentProps> = ({
               (t.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase() &&
                t.artist.trim().toLowerCase() === currentTrack.artist.trim().toLowerCase())
             ) ? (
-              <Pause size={24} fill="#000000" color="#000000" />
+              <SpotifyPauseIcon size={24} fill="#000000" />
             ) : (
-              <Play size={24} fill="#000000" color="#000000" style={{ marginLeft: '3px' }} />
+              <SpotifyPlayIcon size={24} fill="#000000" />
             )}
           </button>
 
@@ -996,9 +997,9 @@ export const MainContent: React.FC<MainContentProps> = ({
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px' }}>
                     {isHovered ? (
                       isCurrent && isPlaying ? (
-                        <Pause size={16} fill="#ffffff" color="#ffffff" onClick={(e) => { e.stopPropagation(); onTogglePlay(); }} />
+                        <SpotifyPauseIcon size={16} fill="#ffffff" onClick={(e) => { e.stopPropagation(); onTogglePlay(); }} />
                       ) : (
-                        <Play size={16} fill="#ffffff" color="#ffffff" onClick={(e) => { e.stopPropagation(); onPlayTrack(track, playlist.tracks, { id: playlist.id, title: playlist.title }); }} />
+                        <SpotifyPlayIcon size={16} fill="#ffffff" onClick={(e) => { e.stopPropagation(); onPlayTrack(track, playlist.tracks, { id: playlist.id, title: playlist.title }); }} />
                       )
                     ) : isCurrent && isPlaying ? (
                       <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '14px' }}>
@@ -1314,7 +1315,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                 onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
                 onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
               >
-                <Play size={18} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                <SpotifyPlayIcon size={18} fill="#000000" />
               </div>
             </div>
           );
@@ -1433,7 +1434,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
                 >
-                  <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                  <SpotifyPlayIcon size={20} fill="#000000" />
                 </button>
               </div>
 
@@ -1549,7 +1550,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
                 >
-                  <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                  <SpotifyPlayIcon size={20} fill="#000000" />
                 </button>
               </div>
 
@@ -1683,7 +1684,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
                 >
-                  <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                  <SpotifyPlayIcon size={20} fill="#000000" />
                 </button>
               </div>
 
@@ -1849,7 +1850,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
                 >
-                  <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                  <SpotifyPlayIcon size={20} fill="#000000" />
                 </button>
               </div>
 
@@ -1990,7 +1991,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
                 >
-                  <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                  <SpotifyPlayIcon size={20} fill="#000000" />
                 </button>
               </div>
 
@@ -2106,7 +2107,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
                   onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
                 >
-                  <Play size={20} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                  <SpotifyPlayIcon size={20} fill="#000000" />
                 </button>
               </div>
 
@@ -2269,7 +2270,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                     onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
                   >
-                    <Play size={22} fill="#000000" color="#000000" style={{ marginLeft: '2px' }} />
+                    <SpotifyPlayIcon size={22} fill="#000000" />
                   </button>
                 </div>
               </div>
