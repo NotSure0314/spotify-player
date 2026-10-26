@@ -24,4 +24,10 @@ export interface Playlist {
   followers?: number;
 }
 
+export interface Artist {
+  id: string;
+  name: string;
+  coverUrl: string;
+}
+
 export type RepeatMode = 'off' | 'all' | 'one';

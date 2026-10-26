@@ -46,7 +46,7 @@ export default async function handler(req: any, res: any) {
 
   const query = (req.query?.q || req.query?.query || '') as string;
   if (!query.trim()) {
-    return res.status(200).json({ tracks: [], playlists: [] });
+    return res.status(200).json({ tracks: [], playlists: [], artists: [] });
   }
 
   const trimmed = query.trim();
@@ -113,10 +113,10 @@ export default async function handler(req: any, res: any) {
       } catch {}
     }
 
-    // 3. Search Songs via iTunes Search API in parallel
+    // 3. Search Songs via iTunes Search API in parallel (50 songs)
     const searchTracksPromise = (async () => {
       try {
-        const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(trimmed)}&entity=song&limit=25`;
+        const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(trimmed)}&entity=song&limit=60`;
         const itunesRes = await fetch(searchUrl);
         const data = await itunesRes.json();
         return (data.results || []).map((r: any, idx: number) => {
@@ -139,7 +139,34 @@ export default async function handler(req: any, res: any) {
       }
     })();
 
-    // 4. Search Playlists: First via Spotify CLI, then fallback to Curated Public Playlists
+    // 4. Search Artists via Spotify CLI or fallback
+    const searchArtistsPromise = (async () => {
+      let results: any[] = [];
+      if (existsSync(CLI_PATH)) {
+        try {
+          const { stdout } = await execAsync(
+            `"${CLI_PATH}" search "${trimmed.replace(/"/g, '')}" --type artist --limit 10 --format json`,
+            { timeout: 3000 }
+          );
+          const data = JSON.parse(stdout);
+          const rawArtists = data.artists || [];
+          results = rawArtists.map((a: any, idx: number) => {
+            let img = a.image || '';
+            if (img.startsWith('spotify:image:')) {
+              img = img.replace('spotify:image:', 'https://i.scdn.co/image/');
+            }
+            return {
+              id: a.uri || `artist-${idx}`,
+              name: a.name || 'Unknown Artist',
+              coverUrl: img || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=300&q=80'
+            };
+          });
+        } catch {}
+      }
+      return results;
+    })();
+
+    // 5. Search Playlists: First via Spotify CLI, then fallback to Curated Public Playlists
     const searchPlaylistsPromise = (async () => {
       let results: any[] = [];
 
@@ -226,10 +253,28 @@ export default async function handler(req: any, res: any) {
       return results;
     })();
 
-    const [tracks, playlists] = await Promise.all([searchTracksPromise, searchPlaylistsPromise]);
+    let [tracks, playlists, artists] = await Promise.all([searchTracksPromise, searchPlaylistsPromise, searchArtistsPromise]);
 
-    return res.status(200).json({ tracks, playlists });
+    // Fallback: If no artists from CLI, extract unique artists from the tracks
+    if (!artists || artists.length === 0) {
+      const seen = new Set<string>();
+      artists = [];
+      for (const t of tracks) {
+        const norm = (t.artist || '').trim().toLowerCase();
+        if (norm && !seen.has(norm)) {
+          seen.add(norm);
+          artists.push({
+            id: `artist-${norm.replace(/[^a-z0-9]+/g, '-')}`,
+            name: t.artist,
+            coverUrl: t.coverUrl
+          });
+        }
+        if (artists.length >= 10) break;
+      }
+    }
+
+    return res.status(200).json({ tracks, playlists, artists });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message || 'Search failed', tracks: [], playlists: [] });
+    return res.status(500).json({ error: err.message || 'Search failed', tracks: [], playlists: [], artists: [] });
   }
 }

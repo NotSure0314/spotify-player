@@ -5,7 +5,7 @@ import { MainContent } from './components/MainContent';
 import { NowPlayingBar } from './components/NowPlayingBar';
 import { RightPanel } from './components/RightPanel';
 import { SyncUserModal } from './components/SyncUserModal';
-import { Track, Playlist, RepeatMode } from './types';
+import { Track, Playlist, Artist, RepeatMode } from './types';
 import { audioEngine } from './audioEngine';
 import {
   fetchUserProfile,
@@ -43,6 +43,7 @@ export function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<Track[]>([]);
   const [searchPlaylists, setSearchPlaylists] = useState<Playlist[]>([]);
+  const [searchArtists, setSearchArtists] = useState<Artist[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [userProfile, setUserProfile] = useState<SpotifyUserProfile | null>(getSavedUserProfile());
   const [isSyncModalOpen, setIsSyncModalOpen] = useState<boolean>(false);
@@ -336,25 +337,43 @@ export function App() {
     }
   };
 
-  // 4. Debounced Live Catalog Search (Tracks + Playlists)
+  // 4. Debounced Live Catalog Search (Tracks + Playlists + Artists)
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
       setSearchPlaylists([]);
+      setSearchArtists([]);
       setIsSearching(false);
       return;
     }
 
     const timer = setTimeout(async () => {
       setIsSearching(true);
-      const { tracks, playlists: foundPlaylists } = await searchSpotifyCatalog(searchQuery);
+      const { tracks, playlists: foundPlaylists, artists: foundArtists } = await searchSpotifyCatalog(searchQuery);
       setSearchResults(tracks);
       setSearchPlaylists(foundPlaylists);
+      setSearchArtists(foundArtists || []);
       setIsSearching(false);
     }, 300);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Handle selecting or playing a searched artist
+  const handleSelectSearchArtist = (artist: Artist, autoPlay: boolean = false) => {
+    if (autoPlay) {
+      const artistTracks = searchResults.filter(
+        t => t.artist.toLowerCase().includes(artist.name.toLowerCase()) ||
+             artist.name.toLowerCase().includes(t.artist.toLowerCase())
+      );
+      if (artistTracks.length > 0) {
+        handlePlayTrack(artistTracks[0], artistTracks, { id: artist.id, title: `${artist.name} Radio` });
+        return;
+      }
+    }
+    setSearchQuery(artist.name);
+    handleSelectView('search');
+  };
 
   // Handle selecting or playing a searched playlist
   const handleSelectSearchPlaylist = async (playlist: Playlist, autoPlay: boolean = false) => {
@@ -1405,7 +1424,9 @@ export function App() {
             searchQuery={searchQuery}
             searchResults={searchResults}
             searchPlaylists={searchPlaylists}
+            searchArtists={searchArtists}
             onSelectSearchPlaylist={handleSelectSearchPlaylist}
+            onSelectSearchArtist={handleSelectSearchArtist}
             onSelectSearchCategory={(cat: string) => {
               setSearchQuery(cat);
               handleSelectView('search');

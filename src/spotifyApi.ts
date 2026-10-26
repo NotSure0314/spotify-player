@@ -1,4 +1,4 @@
-import { Playlist, Track } from './types';
+import { Playlist, Track, Artist } from './types';
 
 export interface SpotifyUserProfile {
   id: string;
@@ -251,21 +251,23 @@ export async function fetchLivePlaylistDetails(uriOrId: string): Promise<Playlis
 export interface SearchResult {
   tracks: Track[];
   playlists: Playlist[];
+  artists: Artist[];
 }
 
 export async function searchSpotifyCatalog(query: string): Promise<SearchResult> {
-  if (!query.trim()) return { tracks: [], playlists: [] };
+  if (!query.trim()) return { tracks: [], playlists: [], artists: [] };
   try {
     const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-    if (!res.ok) return { tracks: [], playlists: [] };
+    if (!res.ok) return { tracks: [], playlists: [], artists: [] };
     const data = await res.json();
     return {
       tracks: data.tracks || [],
-      playlists: data.playlists || []
+      playlists: data.playlists || [],
+      artists: data.artists || []
     };
   } catch (err) {
     console.error('Error searching catalog:', err);
-    return { tracks: [], playlists: [] };
+    return { tracks: [], playlists: [], artists: [] };
   }
 }
 

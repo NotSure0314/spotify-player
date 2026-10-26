@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Heart, Clock, MoreHorizontal, ArrowDownCircle, Plus, Check, Shuffle } from 'lucide-react';
-import { Playlist, Track } from '../types';
+import { Playlist, Track, Artist } from '../types';
 import { extractDominantColor, getFallbackPlaylistColor, darkenColor } from '../utils/colorExtractor';
 import { SpotifyUserProfile } from '../spotifyApi';
 import { getHighResImageUrl } from '../utils/imageUtils';
@@ -32,7 +32,9 @@ interface MainContentProps {
   searchQuery: string;
   searchResults: Track[];
   searchPlaylists?: Playlist[];
+  searchArtists?: Artist[];
   onSelectSearchPlaylist?: (playlist: Playlist, autoPlay?: boolean) => void;
+  onSelectSearchArtist?: (artist: Artist, autoPlay?: boolean) => void;
   onSelectSearchCategory?: (category: string) => void;
   isSearching: boolean;
   allTracks: Track[];
@@ -111,7 +113,9 @@ export const MainContent: React.FC<MainContentProps> = ({
   searchQuery,
   searchResults,
   searchPlaylists = [],
+  searchArtists = [],
   onSelectSearchPlaylist,
+  onSelectSearchArtist,
   onSelectSearchCategory,
   isSearching,
   allTracks,
@@ -125,7 +129,7 @@ export const MainContent: React.FC<MainContentProps> = ({
   pinnedPlaylistIds = []
 }) => {
   const [activeChip, setActiveChip] = useState<'all' | 'music' | 'podcasts' | 'audiobooks'>('all');
-  const [searchFilter, setSearchFilter] = useState<'all' | 'tracks' | 'playlists'>('all');
+  const [searchFilter, setSearchFilter] = useState<'all' | 'tracks' | 'artists' | 'playlists'>('all');
   const [hoveredTrackIndex, setHoveredTrackIndex] = useState<number | null>(null);
   const [extractedHeaderColor, setExtractedHeaderColor] = useState<string>('#77010b');
   const [scrolledPastHero, setScrolledPastHero] = useState<boolean>(false);
@@ -524,17 +528,132 @@ export const MainContent: React.FC<MainContentProps> = ({
     </div>
   );
 
+  // Helper renderer for artist cards
+  const renderArtistCard = (artist: Artist) => (
+    <div
+      key={artist.id}
+      onClick={() => {
+        if (onSelectSearchArtist) {
+          onSelectSearchArtist(artist, false);
+        }
+      }}
+      style={{
+        backgroundColor: '#181818',
+        padding: '16px',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        transition: 'background-color 0.2s ease',
+        position: 'relative'
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.backgroundColor = '#282828';
+        const playBtn = e.currentTarget.querySelector('.search-card-play') as HTMLElement;
+        if (playBtn) {
+          playBtn.style.opacity = '1';
+          playBtn.style.transform = 'translateY(0)';
+        }
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.backgroundColor = '#181818';
+        const playBtn = e.currentTarget.querySelector('.search-card-play') as HTMLElement;
+        if (playBtn) {
+          playBtn.style.opacity = '0';
+          playBtn.style.transform = 'translateY(8px)';
+        }
+      }}
+    >
+      <div style={{
+        position: 'relative',
+        width: '100%',
+        paddingBottom: '100%',
+        marginBottom: '16px',
+        borderRadius: '50%',
+        overflow: 'hidden',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+      }}>
+        <img
+          src={getHighResImageUrl(artist.coverUrl)}
+          alt={artist.name}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover'
+          }}
+        />
+        {/* Floating Play Button */}
+        <button
+          className="search-card-play"
+          onClick={e => {
+            e.stopPropagation();
+            if (onSelectSearchArtist) {
+              onSelectSearchArtist(artist, true);
+            }
+          }}
+          title={`Play ${artist.name}`}
+          style={{
+            position: 'absolute',
+            right: '8px',
+            bottom: '8px',
+            width: '48px',
+            height: '48px',
+            borderRadius: '50%',
+            backgroundColor: '#1ed760',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
+            opacity: 0,
+            transform: 'translateY(8px)',
+            transition: 'opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease',
+            cursor: 'pointer'
+          }}
+          onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1fdf64')}
+          onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#1ed760')}
+        >
+          <SpotifyPlayIcon size={22} fill="#000000" />
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <span style={{
+          fontSize: '16px',
+          fontWeight: 700,
+          color: '#ffffff',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          marginBottom: '4px'
+        }}>
+          {artist.name}
+        </span>
+        <span style={{
+          fontSize: '13px',
+          color: 'var(--text-subdued)',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
+        }}>
+          Artist
+        </span>
+      </div>
+    </div>
+  );
+
   // 1. SEARCH VIEW
   if (currentView === 'search') {
     return (
       <div style={{ padding: '24px 32px 32px 32px' }} className="animate-fade-in">
         {searchQuery.trim() ? (
           <div>
-            {/* Filter Pills (All, Songs, Playlists) */}
+            {/* Filter Pills (All, Songs, Artists, Playlists) */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', alignItems: 'center' }}>
-              {(['all', 'tracks', 'playlists'] as const).map(tab => {
+              {(['all', 'tracks', 'artists', 'playlists'] as const).map(tab => {
                 const isActive = searchFilter === tab;
-                const label = tab === 'all' ? 'All' : tab === 'tracks' ? 'Songs' : 'Playlists';
+                const label = tab === 'all' ? 'All' : tab === 'tracks' ? 'Songs' : tab === 'artists' ? 'Artists' : 'Playlists';
                 return (
                   <button
                     key={tab}
@@ -568,7 +687,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   <div style={{ marginBottom: '36px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                       <h2 style={{ fontSize: '24px', fontWeight: 700 }}>Songs</h2>
-                      {searchResults.length > 4 && (
+                      {searchResults.length > 10 && (
                         <button
                           onClick={() => setSearchFilter('tracks')}
                           style={{
@@ -587,7 +706,40 @@ export const MainContent: React.FC<MainContentProps> = ({
                       )}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      {searchResults.slice(0, 4).map((t, idx) => renderTrackRow(t, idx))}
+                      {searchResults.slice(0, 10).map((t, idx) => renderTrackRow(t, idx))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Artists Section */}
+                {searchArtists.length > 0 && (
+                  <div style={{ marginBottom: '36px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                      <h2 style={{ fontSize: '24px', fontWeight: 700 }}>Artists</h2>
+                      {searchArtists.length > 6 && (
+                        <button
+                          onClick={() => setSearchFilter('artists')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-subdued)',
+                            fontSize: '14px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.color = '#ffffff')}
+                          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-subdued)')}
+                        >
+                          Show all
+                        </button>
+                      )}
+                    </div>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                      gap: '24px'
+                    }}>
+                      {searchArtists.slice(0, 6).map(a => renderArtistCard(a))}
                     </div>
                   </div>
                 )}
@@ -625,7 +777,7 @@ export const MainContent: React.FC<MainContentProps> = ({
                   </div>
                 )}
 
-                {searchResults.length === 0 && searchPlaylists.length === 0 && !isSearching && (
+                {searchResults.length === 0 && searchPlaylists.length === 0 && searchArtists.length === 0 && !isSearching && (
                   <p style={{ color: 'var(--text-subdued)', marginTop: '20px' }}>
                     No results found for "{searchQuery}". Try searching for an artist, song, or playlist name.
                   </p>
@@ -643,6 +795,24 @@ export const MainContent: React.FC<MainContentProps> = ({
                   </div>
                 ) : !isSearching ? (
                   <p style={{ color: 'var(--text-subdued)', marginTop: '20px' }}>No songs found.</p>
+                ) : null}
+              </div>
+            )}
+
+            {/* TAB: ARTISTS */}
+            {searchFilter === 'artists' && (
+              <div>
+                <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '16px' }}>Artists</h2>
+                {searchArtists.length > 0 ? (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                    gap: '24px'
+                  }}>
+                    {searchArtists.map(a => renderArtistCard(a))}
+                  </div>
+                ) : !isSearching ? (
+                  <p style={{ color: 'var(--text-subdued)', marginTop: '20px' }}>No artists found.</p>
                 ) : null}
               </div>
             )}

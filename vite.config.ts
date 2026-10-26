@@ -701,7 +701,7 @@ function spotifyStandalonePlugin(): Plugin {
             const q = (query.q || query.query || '') as string;
             const trimmed = q.trim();
             if (!trimmed) {
-              return res.end(JSON.stringify({ tracks: [], playlists: [] }));
+              return res.end(JSON.stringify({ tracks: [], playlists: [], artists: [] }));
             }
 
             // 1. Direct playlist link / URI check
@@ -764,10 +764,10 @@ function spotifyStandalonePlugin(): Plugin {
               } catch {}
             }
 
-            // 3. Search Songs
+            // 3. Search Songs (up to 60 tracks)
             const searchTracksPromise = (async () => {
               try {
-                const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(trimmed)}&entity=song&limit=25`;
+                const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(trimmed)}&entity=song&limit=60`;
                 const itunesRes = await fetch(searchUrl);
                 const data = await itunesRes.json();
                 return (data.results || []).map((r: any, idx: number) => {
@@ -790,7 +790,32 @@ function spotifyStandalonePlugin(): Plugin {
               }
             })();
 
-            // 4. Search Playlists
+            // 4. Search Artists via Spotify CLI
+            const searchArtistsPromise = (async () => {
+              let results: any[] = [];
+              try {
+                const { stdout } = await execAsync(
+                  `"${CLI_PATH}" search "${trimmed.replace(/"/g, '')}" --type artist --limit 10 --format json`,
+                  { timeout: 3000 }
+                );
+                const data = JSON.parse(stdout);
+                const rawArtists = data.artists || [];
+                results = rawArtists.map((a: any, idx: number) => {
+                  let img = a.image || '';
+                  if (img.startsWith('spotify:image:')) {
+                    img = img.replace('spotify:image:', 'https://i.scdn.co/image/');
+                  }
+                  return {
+                    id: a.uri || `artist-${idx}`,
+                    name: a.name || 'Unknown Artist',
+                    coverUrl: img || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=300&q=80'
+                  };
+                });
+              } catch {}
+              return results;
+            })();
+
+            // 5. Search Playlists
             const searchPlaylistsPromise = (async () => {
               let results: any[] = [];
               try {
@@ -871,8 +896,27 @@ function spotifyStandalonePlugin(): Plugin {
               return results;
             })();
 
-            const [tracks, playlists] = await Promise.all([searchTracksPromise, searchPlaylistsPromise]);
-            return res.end(JSON.stringify({ tracks, playlists }));
+            let [tracks, playlists, artists] = await Promise.all([searchTracksPromise, searchPlaylistsPromise, searchArtistsPromise]);
+
+            // Fallback: If no artists from CLI, extract unique artists from the tracks
+            if (!artists || artists.length === 0) {
+              const seen = new Set<string>();
+              artists = [];
+              for (const t of tracks) {
+                const norm = (t.artist || '').trim().toLowerCase();
+                if (norm && !seen.has(norm)) {
+                  seen.add(norm);
+                  artists.push({
+                    id: `artist-${norm.replace(/[^a-z0-9]+/g, '-')}`,
+                    name: t.artist,
+                    coverUrl: t.coverUrl
+                  });
+                }
+                if (artists.length >= 10) break;
+              }
+            }
+
+            return res.end(JSON.stringify({ tracks, playlists, artists }));
           } else {
             res.statusCode = 404;
             res.end(JSON.stringify({ error: 'Endpoint not found' }));
