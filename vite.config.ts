@@ -4,6 +4,7 @@ import url from 'url';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
+import { createHmac } from 'crypto';
 
 const execAsync = promisify(exec);
 const CLI_PATH = '/Applications/Spotify.app/Contents/MacOS/spotify_cli';
@@ -32,6 +33,188 @@ async function ensureSpotifyRunning(): Promise<boolean> {
 const globalCoverCache = new Map<string, string>();
 const globalAlbumCache = new Map<string, string>();
 const ytCache = new Map<string, string>();
+let cachedToken: string | null = null;
+let cachedTokenExpiry = 0;
+
+function base32Encode(buffer: Buffer): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0;
+  let value = 0;
+  let output = '';
+  for (let i = 0; i < buffer.length; i++) {
+    value = (value << 8) | buffer[i];
+    bits += 8;
+    while (bits >= 5) {
+      output += alphabet[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) output += alphabet[(value << (5 - bits)) & 31];
+  return output;
+}
+
+function getTOTP(secretBase32: string, timeStep = 30): string {
+  const epoch = Math.floor(Date.now() / 1000);
+  const counter = Math.floor(epoch / timeStep);
+  const counterBuffer = Buffer.alloc(8);
+  counterBuffer.writeBigInt64BE(BigInt(counter));
+
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0, value = 0;
+  const bytes: number[] = [];
+  for (const char of secretBase32.toUpperCase()) {
+    const val = alphabet.indexOf(char);
+    if (val === -1) continue;
+    value = (value << 5) | val;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  const hmac = createHmac('sha1', Buffer.from(bytes));
+  hmac.update(counterBuffer);
+  const digest = hmac.digest();
+  const offset = digest[digest.length - 1] & 0xf;
+  const code = (
+    ((digest[offset] & 0x7f) << 24) |
+    ((digest[offset + 1] & 0xff) << 16) |
+    ((digest[offset + 2] & 0xff) << 8) |
+    (digest[offset + 3] & 0xff)
+  ) % 1000000;
+  return code.toString().padStart(6, '0');
+}
+
+async function getSpotifyToken(): Promise<string | null> {
+  const now = Date.now();
+  if (cachedToken && now < cachedTokenExpiry - 60000) {
+    return cachedToken;
+  }
+
+  try {
+    const version = 61;
+    const secretBytes = [44,55,47,42,70,40,34,114,76,74,50,111,120,97,75,76,94,102,43,69,49,120,118,80,64,78];
+    const transformed = secretBytes.map((e, t) => e ^ ((t % 33) + 9));
+    const hexStr = Buffer.from(transformed.join(''), 'utf8').toString('hex');
+    const secret = base32Encode(Buffer.from(hexStr, 'hex'));
+    const totp = getTOTP(secret);
+
+    const tokenRes = await fetch(
+      `https://open.spotify.com/api/token?reason=init&productType=web-player&totp=${totp}&totpVer=${version}&totpServer=${totp}`,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://open.spotify.com/'
+        }
+      }
+    );
+    if (!tokenRes.ok) return null;
+    const data = await tokenRes.json();
+    if (data.accessToken) {
+      cachedToken = data.accessToken;
+      cachedTokenExpiry = data.accessTokenExpirationTimestampMs || (Date.now() + 3600000);
+      return cachedToken;
+    }
+  } catch (err) {
+    console.warn('Failed to retrieve Spotify web token:', err);
+  }
+  return null;
+}
+
+async function fetchPlaylistViaPathfinder(cleanId: string, fullUri: string) {
+  const token = await getSpotifyToken();
+  if (!token) return null;
+
+  let offset = 0;
+  const limit = 200;
+  const allTracks: any[] = [];
+  let playlistMeta: any = null;
+
+  while (true) {
+    const res = await fetch('https://api-partner.spotify.com/pathfinder/v2/query', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json;charset=UTF-8',
+        'Accept': 'application/json',
+        'app-platform': 'WebPlayer',
+        'spotify-app-version': '1.3.8.509.g26b6eac7300d',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Referer': 'https://open.spotify.com/'
+      },
+      body: JSON.stringify({
+        variables: {
+          uri: fullUri,
+          offset,
+          limit,
+          enableWatchFeedEntrypoint: false,
+          includeEpisodeContentRatingsV2: true
+        },
+        operationName: 'fetchPlaylist',
+        extensions: {
+          persistedQuery: {
+            version: 1,
+            sha256Hash: '21ea11a6ac75a5f3e01fd365d29c18e0a4a8b7dc09f89bbb5d73910190c6acaf'
+          }
+        }
+      })
+    });
+
+    if (!res.ok) break;
+    const data = await res.json();
+    const pl = data.data?.playlistV2;
+    if (!pl) break;
+
+    if (!playlistMeta) {
+      playlistMeta = {
+        name: pl.name,
+        description: pl.description || 'Spotify Playlist',
+        owner: pl.ownerV2?.data?.name || (cleanId === '5k3iI5fE68jr4UdX2UG6NN' ? 'Shreeji' : 'Spotify'),
+        totalCount: pl.content?.totalCount || 0,
+        coverUrl: pl.images?.items?.[0]?.sources?.[0]?.url || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80'
+      };
+    }
+
+    const items = pl.content?.items || [];
+    for (const item of items) {
+      const d = item.itemV2?.data;
+      if (!d) continue;
+      const artists = (d.artists?.items || []).map((a: any) => a.profile?.name).filter(Boolean).join(', ');
+      const cover = d.albumOfTrack?.coverArt?.sources?.[0]?.url;
+      const album = d.albumOfTrack?.name;
+      if (d.uri && cover) globalCoverCache.set(d.uri, cover);
+      if (d.uri && album) globalAlbumCache.set(d.uri, album);
+
+      allTracks.push({
+        id: d.uri,
+        title: d.name || 'Unknown Track',
+        artist: artists || 'Unknown Artist',
+        album: album || playlistMeta.name,
+        duration: Math.round((d.trackDuration?.totalMilliseconds || 180000) / 1000),
+        coverUrl: cover || playlistMeta.coverUrl,
+        gradient: '#1e3a8a',
+        tempo: Math.round(d.playlistAudioAttributes?.bpm || 100)
+      });
+    }
+
+    if (items.length < limit || allTracks.length >= (pl.content?.totalCount || 0)) {
+      break;
+    }
+    offset += items.length;
+  }
+
+  if (!playlistMeta || allTracks.length === 0) return null;
+
+  return {
+    id: fullUri,
+    playlistId: cleanId,
+    title: playlistMeta.name || 'Untitled Playlist',
+    description: playlistMeta.description,
+    author: playlistMeta.owner,
+    coverUrl: playlistMeta.coverUrl,
+    tracks: allTracks
+  };
+}
 
 const CURATED_PUBLIC_PLAYLISTS = [
   { id: '37i9dQZF1DXcBWIGoYBM5M', name: "Today's Top Hits", author: 'Spotify', keywords: 'top hits pop today popular chart' },
@@ -337,6 +520,19 @@ function spotifyStandalonePlugin(): Plugin {
             }
 
             const fullUri = `spotify:playlist:${cleanId}`;
+
+            // 1. Try Spotify Pathfinder API (pulls 100% of tracks beyond 100 limit)
+            try {
+              const pfData = await fetchPlaylistViaPathfinder(cleanId, fullUri);
+              if (pfData && pfData.tracks.length > 0) {
+                return res.end(JSON.stringify({
+                  ...pfData,
+                  gradient: getPlaylistPresetGradient(pfData.title || '', 0)
+                }));
+              }
+            } catch (err) {
+              console.warn('Vite Pathfinder fetch failed:', err);
+            }
 
             // Try local CLI first if available (provides 100% full playlist up to 5,000 genuine tracks)
             try {

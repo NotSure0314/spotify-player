@@ -692,10 +692,17 @@ export function App() {
   // If selecting a playlist without loaded tracks or capped at 100, fetch full tracklist
   useEffect(() => {
     if (selectedPlaylistId) {
-      const isLibraryPl = playlists.some(p => p.id === selectedPlaylistId || p.playlistId === selectedPlaylistId);
+      const cleanSelected = (selectedPlaylistId || '').replace('spotify:playlist:', '').replace('spotify:album:', '');
+      const isLibraryPl = playlists.some(p => {
+        const pClean = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+        return pClean === cleanSelected;
+      });
       const currentPl = isLibraryPl
-        ? playlists.find(p => p.id === selectedPlaylistId || p.playlistId === selectedPlaylistId)
-        : (viewedPlaylist && (viewedPlaylist.id === selectedPlaylistId || viewedPlaylist.playlistId === selectedPlaylistId) ? viewedPlaylist : null);
+        ? playlists.find(p => {
+            const pClean = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+            return pClean === cleanSelected;
+          })
+        : (viewedPlaylist && ((viewedPlaylist.playlistId || viewedPlaylist.id).replace('spotify:playlist:', '').replace('spotify:album:', '') === cleanSelected) ? viewedPlaylist : null);
 
       if (!currentPl || currentPl.tracks.length === 0 || currentPl.tracks.length < 5000) {
         fetchLivePlaylistDetails(selectedPlaylistId).then(details => {
@@ -710,7 +717,10 @@ export function App() {
             if (isLibraryPl) {
               addImportedPlaylist(fullPlaylist, userProfile?.id);
               setPlaylists(prev =>
-                prev.map(p => (p.id === selectedPlaylistId || p.playlistId === selectedPlaylistId ? fullPlaylist : p))
+                prev.map(p => {
+                  const pClean = (p.playlistId || p.id).replace('spotify:playlist:', '').replace('spotify:album:', '');
+                  return pClean === cleanSelected ? fullPlaylist : p;
+                })
               );
             }
             setViewedPlaylist(fullPlaylist);

@@ -1,13 +1,206 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { existsSync } from 'fs';
+import { createHmac } from 'crypto';
 
 const execAsync = promisify(exec);
 const CLI_PATH = '/Applications/Spotify.app/Contents/MacOS/spotify_cli';
 
-// In-memory cache for track covers across requests
+// In-memory cache for track covers and token across requests
 const globalCoverCache = new Map<string, string>();
 const globalAlbumCache = new Map<string, string>();
+let cachedToken: string | null = null;
+let cachedTokenExpiry = 0;
+
+function base32Encode(buffer: Buffer): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0;
+  let value = 0;
+  let output = '';
+  for (let i = 0; i < buffer.length; i++) {
+    value = (value << 8) | buffer[i];
+    bits += 8;
+    while (bits >= 5) {
+      output += alphabet[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) output += alphabet[(value << (5 - bits)) & 31];
+  return output;
+}
+
+function getTOTP(secretBase32: string, timeStep = 30): string {
+  const epoch = Math.floor(Date.now() / 1000);
+  const counter = Math.floor(epoch / timeStep);
+  const counterBuffer = Buffer.alloc(8);
+  counterBuffer.writeBigInt64BE(BigInt(counter));
+
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0, value = 0;
+  const bytes: number[] = [];
+  for (const char of secretBase32.toUpperCase()) {
+    const val = alphabet.indexOf(char);
+    if (val === -1) continue;
+    value = (value << 5) | val;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  const hmac = createHmac('sha1', Buffer.from(bytes));
+  hmac.update(counterBuffer);
+  const digest = hmac.digest();
+  const offset = digest[digest.length - 1] & 0xf;
+  const code = (
+    ((digest[offset] & 0x7f) << 24) |
+    ((digest[offset + 1] & 0xff) << 16) |
+    ((digest[offset + 2] & 0xff) << 8) |
+    (digest[offset + 3] & 0xff)
+  ) % 1000000;
+  return code.toString().padStart(6, '0');
+}
+
+async function getSpotifyToken(): Promise<string | null> {
+  const now = Date.now();
+  if (cachedToken && now < cachedTokenExpiry - 60000) {
+    return cachedToken;
+  }
+
+  try {
+    const version = 61;
+    const secretBytes = [44,55,47,42,70,40,34,114,76,74,50,111,120,97,75,76,94,102,43,69,49,120,118,80,64,78];
+    const transformed = secretBytes.map((e, t) => e ^ ((t % 33) + 9));
+    const hexStr = Buffer.from(transformed.join(''), 'utf8').toString('hex');
+    const secret = base32Encode(Buffer.from(hexStr, 'hex'));
+    const totp = getTOTP(secret);
+
+    const tokenRes = await fetch(
+      `https://open.spotify.com/api/token?reason=init&productType=web-player&totp=${totp}&totpVer=${version}&totpServer=${totp}`,
+      {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://open.spotify.com/'
+        }
+      }
+    );
+    if (!tokenRes.ok) return null;
+    const data = await tokenRes.json();
+    if (data.accessToken) {
+      cachedToken = data.accessToken;
+      cachedTokenExpiry = data.accessTokenExpirationTimestampMs || (Date.now() + 3600000);
+      return cachedToken;
+    }
+  } catch (err) {
+    console.warn('Failed to retrieve Spotify web token:', err);
+  }
+  return null;
+}
+
+const getPlaylistPresetGradient = (title: string) => {
+  const t = (title || '').toLowerCase();
+  if (t.includes('kitter') || t.includes('hello')) return '#b91c1c';
+  if (t.includes('gym')) return '#77010b';
+  if (t.includes('kanye')) return '#831843';
+  if (t.includes('white girl')) return '#db2777';
+  return '#77010b';
+};
+
+async function fetchPlaylistViaPathfinder(cleanId: string, fullUri: string) {
+  const token = await getSpotifyToken();
+  if (!token) return null;
+
+  let offset = 0;
+  const limit = 200;
+  const allTracks: any[] = [];
+  let playlistMeta: any = null;
+
+  while (true) {
+    const res = await fetch('https://api-partner.spotify.com/pathfinder/v2/query', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json;charset=UTF-8',
+        'Accept': 'application/json',
+        'app-platform': 'WebPlayer',
+        'spotify-app-version': '1.3.8.509.g26b6eac7300d',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Referer': 'https://open.spotify.com/'
+      },
+      body: JSON.stringify({
+        variables: {
+          uri: fullUri,
+          offset,
+          limit,
+          enableWatchFeedEntrypoint: false,
+          includeEpisodeContentRatingsV2: true
+        },
+        operationName: 'fetchPlaylist',
+        extensions: {
+          persistedQuery: {
+            version: 1,
+            sha256Hash: '21ea11a6ac75a5f3e01fd365d29c18e0a4a8b7dc09f89bbb5d73910190c6acaf'
+          }
+        }
+      })
+    });
+
+    if (!res.ok) break;
+    const data = await res.json();
+    const pl = data.data?.playlistV2;
+    if (!pl) break;
+
+    if (!playlistMeta) {
+      playlistMeta = {
+        name: pl.name,
+        description: pl.description || 'Spotify Playlist',
+        owner: pl.ownerV2?.data?.name || (cleanId === '5k3iI5fE68jr4UdX2UG6NN' ? 'Shreeji' : 'Spotify'),
+        totalCount: pl.content?.totalCount || 0,
+        coverUrl: pl.images?.items?.[0]?.sources?.[0]?.url || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80'
+      };
+    }
+
+    const items = pl.content?.items || [];
+    for (const item of items) {
+      const d = item.itemV2?.data;
+      if (!d) continue;
+      const artists = (d.artists?.items || []).map((a: any) => a.profile?.name).filter(Boolean).join(', ');
+      const cover = d.albumOfTrack?.coverArt?.sources?.[0]?.url;
+      const album = d.albumOfTrack?.name;
+      if (d.uri && cover) globalCoverCache.set(d.uri, cover);
+      if (d.uri && album) globalAlbumCache.set(d.uri, album);
+
+      allTracks.push({
+        id: d.uri,
+        title: d.name || 'Unknown Track',
+        artist: artists || 'Unknown Artist',
+        album: album || playlistMeta.name,
+        duration: Math.round((d.trackDuration?.totalMilliseconds || 180000) / 1000),
+        coverUrl: cover || playlistMeta.coverUrl,
+        gradient: '#1e3a8a',
+        tempo: Math.round(d.playlistAudioAttributes?.bpm || 100)
+      });
+    }
+
+    if (items.length < limit || allTracks.length >= (pl.content?.totalCount || 0)) {
+      break;
+    }
+    offset += items.length;
+  }
+
+  if (!playlistMeta || allTracks.length === 0) return null;
+
+  return {
+    id: fullUri,
+    playlistId: cleanId,
+    title: playlistMeta.name || 'Untitled Playlist',
+    description: playlistMeta.description,
+    author: playlistMeta.owner,
+    coverUrl: playlistMeta.coverUrl,
+    gradient: getPlaylistPresetGradient(playlistMeta.name || ''),
+    tracks: allTracks
+  };
+}
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -33,145 +226,97 @@ export default async function handler(req: any, res: any) {
 
   const fullUri = `spotify:playlist:${cleanId}`;
 
-  // 1. Fetch web player metadata to get the true track count (excluding Spotify's appended recommendations)
-  let realTotalCount: number | null = null;
-  let realOwnerName: string | null = null;
+  // 1. Try Spotify Pathfinder API (Works on Vercel and local, pulls 100% of tracks without 100 cap)
   try {
-    const pageRes = await fetch(`https://open.spotify.com/playlist/${cleanId}`);
-    if (pageRes.ok) {
-      const pageHtml = await pageRes.text();
-      const stateMatch = pageHtml.match(/<script id="initialState" type="text\/plain">([\s\S]*?)<\/script>/);
-      if (stateMatch) {
-        const raw = Buffer.from(stateMatch[1], 'base64').toString('utf-8');
-        const json = JSON.parse(raw);
-        const item = json.entities?.items?.[fullUri];
-        if (item?.ownerV2?.data?.name) {
-          realOwnerName = item.ownerV2.data.name;
-        }
-        if (item?.content?.totalCount) {
-          realTotalCount = item.content.totalCount;
-        }
-        (item?.content?.items || []).forEach((ci: any) => {
-          const data = ci?.itemV2?.data;
-          if (data?.uri) {
-            const cover = data.albumOfTrack?.coverArt?.sources?.[0]?.url;
-            const album = data.albumOfTrack?.name;
-            if (cover) globalCoverCache.set(data.uri, cover);
-            if (album) globalAlbumCache.set(data.uri, album);
-          }
-        });
-      }
+    const pathfinderResult = await fetchPlaylistViaPathfinder(cleanId, fullUri);
+    if (pathfinderResult && pathfinderResult.tracks.length > 0) {
+      return res.status(200).json(pathfinderResult);
     }
-  } catch {}
+  } catch (err) {
+    console.warn('Pathfinder API fetch failed, falling back:', err);
+  }
 
-  // 2. Try local desktop CLI if available
+  // 2. Try local desktop CLI if available (when running locally on macOS)
   if (existsSync(CLI_PATH)) {
     try {
-    // If Spotify is not running, ensure it starts quietly in background
-    try {
-      const { stdout: statusOut } = await execAsync(`"${CLI_PATH}" status`, { timeout: 1500 }).catch(() => ({ stdout: '' }));
-      if (!statusOut.includes('is running') && !statusOut.includes('running')) {
-        await execAsync(`open -g -a Spotify`, { timeout: 3000 }).catch(() => {});
-        for (let i = 0; i < 8; i++) {
-          await new Promise(r => setTimeout(r, 300));
-          try {
-            const { stdout: s } = await execAsync(`"${CLI_PATH}" status`, { timeout: 1000 });
-            if (s.includes('is running') || s.includes('running')) break;
-          } catch {}
+      try {
+        const { stdout: statusOut } = await execAsync(`"${CLI_PATH}" status`, { timeout: 1500 }).catch(() => ({ stdout: '' }));
+        if (!statusOut.includes('is running') && !statusOut.includes('running')) {
+          await execAsync(`open -g -a Spotify`, { timeout: 3000 }).catch(() => {});
+          for (let i = 0; i < 8; i++) {
+            await new Promise(r => setTimeout(r, 300));
+            try {
+              const { stdout: s } = await execAsync(`"${CLI_PATH}" status`, { timeout: 1000 });
+              if (s.includes('is running') || s.includes('running')) break;
+            } catch {}
+          }
         }
-      }
-    } catch {}
+      } catch {}
 
-    const { stdout } = await execAsync(`"${CLI_PATH}" playlist get "${fullUri}" --limit 5000 --format json`, { timeout: 20000 });
-    const plData = JSON.parse(stdout);
-    if (plData.tracks && plData.tracks.length > 0) {
-      // Trim Spotify desktop client's auto-appended recommendations
-      // For Hello Kitter, the user's actual tracks end at #152 (Tek It by Cafuné).
-      if (cleanId === '5k3iI5fE68jr4UdX2UG6NN' && plData.tracks.length > 152) {
-        plData.tracks = plData.tracks.slice(0, 152);
-      } else if (realTotalCount && plData.tracks.length > realTotalCount) {
-        plData.tracks = plData.tracks.slice(0, realTotalCount === 154 ? 152 : realTotalCount);
-      }
+      const { stdout } = await execAsync(`"${CLI_PATH}" playlist get "${fullUri}" --limit 5000 --format json`, { timeout: 20000 });
+      const plData = JSON.parse(stdout);
+      if (plData.tracks && plData.tracks.length > 0) {
+        if (cleanId === '5k3iI5fE68jr4UdX2UG6NN' && plData.tracks.length > 152) {
+          plData.tracks = plData.tracks.slice(0, 152);
+        }
 
-      // Lookup artwork for all genuine tracks concurrently in batches of 3
-      const trackUris = plData.tracks.map((t: any) => t.uri).filter(Boolean);
-      const missingFromCache = trackUris.filter((u: string) => !globalCoverCache.has(u));
-      const batchSize = 50;
-      const batches: string[][] = [];
-      for (let i = 0; i < missingFromCache.length; i += batchSize) {
-        batches.push(missingFromCache.slice(i, i + batchSize));
-      }
+        const trackUris = plData.tracks.map((t: any) => t.uri).filter(Boolean);
+        const missingFromCache = trackUris.filter((u: string) => !globalCoverCache.has(u));
+        const batchSize = 50;
+        const batches: string[][] = [];
+        for (let i = 0; i < missingFromCache.length; i += batchSize) {
+          batches.push(missingFromCache.slice(i, i + batchSize));
+        }
 
-      for (let i = 0; i < batches.length; i += 3) {
-        const currentBatches = batches.slice(i, i + 3);
-        await Promise.all(currentBatches.map(async (batch) => {
-          try {
-            const urisArg = batch.map((u: string) => `"${u}"`).join(' ');
-            const { stdout: lookupOut } = await execAsync(`"${CLI_PATH}" lookup ${urisArg} --format json`, { timeout: 4000 });
-            const lookupData = JSON.parse(lookupOut);
-            (lookupData.entities || []).forEach((e: any) => {
-              if (e.uri && e.image_url) {
-                const highRes = e.image_url.replace('ab67616d00004851', 'ab67616d00001e02');
-                globalCoverCache.set(e.uri, highRes);
-                if (e.parent?.name) globalAlbumCache.set(e.uri, e.parent.name);
+        for (const batch of batches) {
+          await Promise.all(batch.map(async (uri: string) => {
+            try {
+              const trackId = uri.replace('spotify:track:', '');
+              const oembedRes = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/track/${trackId}`);
+              if (oembedRes.ok) {
+                const data = await oembedRes.json();
+                if (data.thumbnail_url) globalCoverCache.set(uri, data.thumbnail_url);
               }
-            });
-          } catch {}
-        }));
+            } catch {}
+          }));
+        }
+
+        const playlistCover = plData.image_url || plData.coverUrl || globalCoverCache.get(plData.tracks[0]?.uri) || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80';
+
+        const tracks = plData.tracks.map((t: any, index: number) => {
+          const trackCover = globalCoverCache.get(t.uri) || playlistCover;
+          const trackAlbum = globalAlbumCache.get(t.uri) || t.album || plData.name || 'Spotify Playlist';
+
+          return {
+            id: t.uri || `spotify:track:${cleanId}-${index}`,
+            title: t.name || t.title || 'Unknown Title',
+            artist: t.artist || t.artists?.[0]?.name || 'Unknown Artist',
+            album: trackAlbum,
+            duration: Math.round((t.duration_ms || t.duration || 180000) / 1000),
+            coverUrl: trackCover,
+            audioUrl: t.preview_url || undefined,
+            gradient: '#1e3a8a',
+            tempo: 80 + (index % 5) * 4
+          };
+        });
+
+        return res.status(200).json({
+          id: fullUri,
+          playlistId: cleanId,
+          title: plData.name || 'Untitled Playlist',
+          description: plData.description || 'Spotify Playlist',
+          author: (cleanId === '5k3iI5fE68jr4UdX2UG6NN' ? 'Shreeji' : 'Spotify'),
+          coverUrl: playlistCover,
+          gradient: getPlaylistPresetGradient(plData.name || ''),
+          tracks
+        });
       }
-
-      // Lookup playlist cover
-      let playlistCover = globalCoverCache.get(fullUri) || '';
-      if (!playlistCover) {
-        try {
-          const { stdout: plLookup } = await execAsync(`"${CLI_PATH}" lookup "${fullUri}" --format json`, { timeout: 2000 });
-          const plLookupData = JSON.parse(plLookup);
-          playlistCover = plLookupData.entities?.[0]?.image_url || '';
-          if (playlistCover) globalCoverCache.set(fullUri, playlistCover);
-        } catch {}
-      }
-
-      const tracks = plData.tracks.map((t: any, index: number) => {
-        const cover = globalCoverCache.get(t.uri) || playlistCover || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80';
-        const album = globalAlbumCache.get(t.uri) || t.album || plData.name;
-        return {
-          id: t.uri || `spotify:track:${cleanId}-${index}`,
-          title: t.name || 'Unknown Title',
-          artist: (t.artists || []).join(', ') || 'Unknown Artist',
-          album,
-          duration: t.duration || 180,
-          coverUrl: cover,
-          gradient: '#1e3a8a',
-          tempo: 80 + (index % 5) * 4
-        };
-      });
-
-      const getPlaylistPresetGradient = (title: string) => {
-        const t = (title || '').toLowerCase();
-        if (t.includes('kitter') || t.includes('hello')) return '#b91c1c'; // Vibrant Red
-        if (t.includes('gym')) return '#77010b'; // Iron Man Crimson Red
-        if (t.includes('kanye')) return '#831843'; // Crimson Plum
-        if (t.includes('white girl')) return '#db2777'; // Electric Hot Pink
-        return '#77010b';
-      };
-
-      return res.status(200).json({
-        id: fullUri,
-        playlistId: cleanId,
-        title: plData.name || 'Untitled Playlist',
-        description: plData.description || 'Spotify Playlist',
-        author: realOwnerName || (cleanId === '5k3iI5fE68jr4UdX2UG6NN' ? 'Shreeji' : 'Spotify'),
-        coverUrl: playlistCover || tracks[0]?.coverUrl || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80',
-        gradient: getPlaylistPresetGradient(plData.name || ''),
-        tracks
-      });
-    }
     } catch (cliErr) {
-      // Fallback to web scraping & oEmbed
+      console.warn('CLI fetch failed:', cliErr);
     }
   }
 
-  // 3. Web fallback: Scrape open.spotify.com embed
+  // 3. Fallback: Scrape open.spotify.com embed as last resort
   try {
     const spotifyRes = await fetch(`https://open.spotify.com/embed/playlist/${cleanId}`);
     const html = await spotifyRes.text();
@@ -188,29 +333,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const playlistCover = entity.coverArt?.sources?.[0]?.url || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=300&q=80';
-    let rawTrackList = entity.trackList || [];
-
-    // Trim recommendations if any
-    if (cleanId === '5k3iI5fE68jr4UdX2UG6NN' && rawTrackList.length > 152) {
-      rawTrackList = rawTrackList.slice(0, 152);
-    }
-
-    // Resolve real album covers for all missing tracks
-    const missingTracks = rawTrackList.filter((t: any) => !globalCoverCache.has(t.uri));
-    const chunkSize = 15;
-    for (let i = 0; i < missingTracks.length; i += chunkSize) {
-      const chunk = missingTracks.slice(i, i + chunkSize);
-      await Promise.all(chunk.map(async (t: any) => {
-        try {
-          const trackId = t.uri.replace('spotify:track:', '');
-          const r = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/track/${trackId}`);
-          if (r.ok) {
-            const d = await r.json();
-            if (d.thumbnail_url) globalCoverCache.set(t.uri, d.thumbnail_url);
-          }
-        } catch {}
-      }));
-    }
+    const rawTrackList = entity.trackList || [];
 
     const tracks = rawTrackList.map((t: any, index: number) => {
       const trackCover = globalCoverCache.get(t.uri) || playlistCover;
@@ -229,21 +352,12 @@ export default async function handler(req: any, res: any) {
       };
     });
 
-    const getPlaylistPresetGradient = (title: string) => {
-      const t = (title || '').toLowerCase();
-      if (t.includes('kitter') || t.includes('hello')) return '#b91c1c'; // Vibrant Red
-      if (t.includes('gym')) return '#77010b'; // Iron Man Crimson Red
-      if (t.includes('kanye')) return '#831843'; // Crimson Plum
-      if (t.includes('white girl')) return '#db2777'; // Electric Hot Pink
-      return '#77010b';
-    };
-
     return res.status(200).json({
       id: fullUri,
       playlistId: cleanId,
       title: entity.name || entity.title || 'Untitled Playlist',
       description: entity.subtitle ? `By ${entity.subtitle}` : 'Spotify Playlist',
-      author: realOwnerName || entity.subtitle || (cleanId === '5k3iI5fE68jr4UdX2UG6NN' ? 'Shreeji' : 'Spotify'),
+      author: entity.subtitle || (cleanId === '5k3iI5fE68jr4UdX2UG6NN' ? 'Shreeji' : 'Spotify'),
       coverUrl: playlistCover,
       gradient: getPlaylistPresetGradient(entity.name || entity.title || ''),
       tracks
