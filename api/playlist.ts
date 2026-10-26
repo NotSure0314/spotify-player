@@ -2,6 +2,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { existsSync } from 'fs';
 import { createHmac } from 'crypto';
+import { SONGS_PLAYLIST_TRACKS } from '../src/utils/songsPlaylistData';
 
 const execAsync = promisify(exec);
 const CLI_PATH = '/Applications/Spotify.app/Contents/MacOS/spotify_cli';
@@ -225,6 +226,20 @@ export default async function handler(req: any, res: any) {
   }
 
   const fullUri = `spotify:playlist:${cleanId}`;
+
+  // Special handling for private playlist "Songs" on cloud/Vercel
+  if (cleanId === '0ifPH6itv3aMGRMAuiscxP') {
+    return res.status(200).json({
+      id: fullUri,
+      playlistId: cleanId,
+      title: 'Songs',
+      description: "Imported from Shreeji's Spotify library",
+      author: 'Shreeji',
+      coverUrl: 'https://i.scdn.co/image/ab67616d0000b27326f7f19c7f0381e56156c94a',
+      gradient: '#1e3a8a',
+      tracks: SONGS_PLAYLIST_TRACKS
+    });
+  }
 
   // 1. Try Spotify Pathfinder API (Works on Vercel and local, pulls 100% of tracks without 100 cap)
   try {
